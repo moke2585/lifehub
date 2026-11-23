@@ -27,15 +27,25 @@ ciphertext       bytes AES-256-GCM 密文（含 128 位 tag）
 | 文件 | 内容 |
 |---|---|
 | `archive.json` | `formatVersion`、`createdAt`、`appVersion`、`hostVersionCode`、插件清单 |
-| `data/<pluginId>.json` | `pluginId`、`dataSchemaVersion`、集合与记录 |
+| `data/<pluginId>.json` | `pluginId`、`dataSchemaVersion`、集合与记录；APK 插件使用可选的 `externalPayload` |
 | `checksums.sha256` | 每个文件一行：`<sha256>  <path>` |
 
 `archive.json` 中的每个插件包含：`pluginId`、`name`、`pluginVersion`、`dataSchemaVersion`、`recordCount`。
 
+### APK 插件数据
+
+独立安装的 APK 插件拥有自己的数据库。其 `data/<pluginId>.json` 中：
+
+- `collections` 为空数组；
+- `externalPayload` 保存 provider 导出的 `PluginDataSnapshot` JSON（字符串）。
+
+宿主不解析插件内部数据，只负责转交；`recordCount` 取快照中的记录总数。旧版备份没有 `externalPayload`，导入到 APK 插件时宿主把 `collections` 转换为快照，再调用 provider 导入，实现迁移。旧版宿主读取新备份时会因 `collections` 为空与 `recordCount` 不一致而拒绝导入，不会写坏数据。
+
 ## 导出规则
 
 - 只导出清单可读且状态不是 `ERROR` / `INCOMPATIBLE` 的插件；禁用、卸载但保留数据的插件仍会导出。
-- 单档案上限 50MB；每插件页面/数据记录沿用存储层限额（单记录 64KB、每集合 5000 条）。
+- APK 插件通过 provider 的 `exportBackup` 导出快照，写入 `externalPayload`；provider 不可用时该插件导出失败并提示。
+- 单档案上限 50MB；每插件页面/数据记录沿用存储层限额（单记录 64KB、每集合 5000 条）。APK 快照受 512 KiB Binder 负载上限约束。
 - 文件名建议：`lifehub-backup-yyyyMMdd-HHmm.lifehub.zip`。使用 `.zip` 后缀是为了让部分手机的文件选择器把备份识别为文件并允许导入；外层仍是 LifeHub 加密容器，不是可直接解压的 ZIP。
 
 ## 导入校验
@@ -69,6 +79,7 @@ ciphertext       bytes AES-256-GCM 密文（含 128 位 tag）
 - 仓库内保存一份当前 v1 导出的 golden fixture：`app/src/test/resources/backup-v1-fixture.lifehub.zip`，固定测试口令，仅含测试数据。
 - 回归测试：`PluginBackupManagerTest.v1GoldenFixtureStillImports`。任何改动备份读取器、容器版本、插件数据 schema 后都必须通过。
 - 导入仍要求：容器版本 1、`formatVersion = 1`、插件已安装且 manifest 可读、`dataSchemaVersion` 与当前 manifest 一致、数据可由宿主 `PluginStorage` 写入。
+- APK 插件导入时，宿主只校验 `externalPayload` 的插件 ID、数据版本与快照记录限额，然后调用 provider 的 `importBackup`；导入结果由插件事务负责。
 - 插件模块拆分、ZIP 声明式插件只要保持 `pluginId`、集合名与 `dataSchemaVersion` 不变，v1 备份继续兼容。
 - APK 插件使用自有数据库时，必须提供 `exportBackup/importBackup`，并在宿主导入器中增加桥接；否则旧备份无法写入该插件。
 - 提升 `formatVersion` 或加密/KDF 时必须保留 v1 读取/解密路径，不得直接拒绝旧档案。

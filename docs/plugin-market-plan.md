@@ -1,6 +1,6 @@
 # LifeHub 插件市场与安装形态实施计划
 
-- 状态：已批准，阶段 A/B/C 已完成，阶段 D 待开始
+- 状态：已批准，阶段 A/B/C/D 已完成，阶段 E 待开始
 - 日期：2026-11-23
 - 目标版本：后续版本（不进入当前首版范围）
 - 关联文档：[ADR-0001](decisions/0001-plugin-form.md)、[ADR-0002](decisions/0002-distribution-and-compliance.md)、[ADR-0005](decisions/0005-signing-upgrade-and-failure.md)、[备份格式 v1](backup-format.md)、[插件开发指南](plugin-development.md)
@@ -104,7 +104,7 @@ lifehub/                        宿主仓库
 └── :dev-harness                ZIP/目录校验与签名校验
 
 lifehub-plugin-ledger/          独立仓库：纯 Kotlin + manifest/pages/assets
-lifehub-plugin-memo/            独立仓库：纯 Kotlin
+lifehub-plugin-memo/            独立仓库：纯 Kotlin + manifest/pages/assets + headless APK
 lifehub-plugin-travel/          独立仓库：Android library
 ```
 
@@ -236,12 +236,12 @@ com.example.water/
 
 任务：
 
-- [ ] 定义 APK 插件 provider 契约与 JSON 协议。
-- [ ] 宿主侧实现发现、签名校验、版本兼容、action/data 适配。
-- [ ] 将任务清单改为 headless APK，页面仍由宿主渲染。
-- [ ] 实现 `exportBackup/importBackup` 与宿主备份路由。
-- [ ] 验证包可见性、安装未知来源、卸载/重装、数据保留。
-- [ ] 记录 Binder 大小与调用延迟，评估旅迹是否适合 APK。
+- [x] 定义 APK 插件 provider 契约与 JSON 协议。
+- [x] 宿主侧实现发现、签名校验、版本兼容、action/data 适配。
+- [x] 将任务清单改为 headless APK，页面仍由宿主渲染。
+- [x] 实现 `exportBackup/importBackup` 与宿主备份路由。
+- [x] 验证包可见性、安装未知来源、卸载/重装、数据保留。
+- [x] 记录 Binder 大小与调用延迟，评估旅迹是否适合 APK。
 
 验收：
 
@@ -368,7 +368,22 @@ com.example.water/
 - 真机验证（Samsung SM-X610 / Android 16）：安装 APK；飞行模式下通过 SAF 导入模板 `.lhplugin`；预览展示签名者指纹，首次导入记录签名者；启用后页面由宿主正常渲染；卸载后重新导入恢复为“未启用”；备份导出包含 `com.lifehub.plugin.template`，覆盖导入成功。
 - 真机发现并修复：重新导入已卸载插件后状态仍为“已卸载”（现导入后恢复为未启用）；导入预览“将更新已安装版本”改为“将替换已有版本”。
 
-## 13. 完成定义
+## 13. 实施记录（阶段 D，2026-11-23）
+
+- 契约：新增 [`docs/apk-plugin-v1.md`](apk-plugin-v1.md)；`PluginApkProtocol` 定义发现 action、7 个 provider 方法、JSON 字段与 512 KiB 负载上限。
+- 协议：为 `PluginActionRequest`、`PluginActionResult`、`PluginPageDataRequest`、`PluginDataResult` 增加 kotlinx.serialization；新增 `PluginDataSnapshot` 作为跨进程备份结构。
+- 宿主：新增 `ApkPluginPackageSource`，通过 `queryIntentContentProviders` 发现插件，按插件返回 `APK_PLUGIN_SIGNED`；`PluginSource.EXTERNAL_APK` 显示“外部安装 · 代码插件”。
+- 路由：`PluginActionDispatcher` / `PluginDataDispatcher` 在本地 handler 缺失时转发到 provider；页面仍由宿主读取 provider 返回的 JSON 渲染。
+- 插件：`lifehub-plugin-memo/apk` 为 headless APK，provider 内使用独立 SQLite；页面/manifest 来自插件 assets；宿主不再打包或注册 `MemoPlugin`。
+- 备份：备份 v1 新增可选 `externalPayload`；APK 插件导出快照，导入直接调用 provider；旧宿主 `collections` 备份自动转换为快照迁移。
+- 未安装：新增 `PluginStatus.NOT_INSTALLED` 与已见插件占位，卸载 APK 后首页显示“任务清单 · 未安装”，宿主其他功能不受影响。
+- 测试：app 110、ledger 35、memo 27、travel 12、plugin-api 49、plugin-runtime 11、dev-harness 10，合计 254 通过；`validatePlugins` 5 包 OK；模块边界与 app/插件 APK lint 通过。
+- 构建：宿主 Debug APK 16,030,575 字节，SHA-256 `71FBF0746F56AFEFC7BD78C495BDF412E4739887B3DE0C358087BD6108F923B8`；任务清单插件 APK 1,425,526 字节，SHA-256 `548DBF2AD0E7475B221482754A3B14A8C8FE9490095F82FE5247CA804971D481`。
+- 真机（Samsung SM-X610 / Android 16）：发现、启用、页面渲染、新增任务、回收站、停用/启用路径正常；旧备份 7 条任务迁移到 APK；新备份往返与 `externalPayload` 校验通过；卸载后显示未安装，重装后恢复发现。
+- Binder：version 冷启动 238 ms，manifest 13 ms，page 2 ms，data 1–62 ms，action 2–11 ms，export 7–25 ms，import 15 ms；负载 0.1–5.1 KiB。
+- 旅迹评估：地图资产与高清 PNG 可能超过 512 KiB，暂不 APK 化，继续内置。
+
+## 14. 完成定义
 
 - 用户可在飞行模式下安装一个 ZIP 插件和一个 APK 插件。
 - 两者的页面都由宿主渲染，风格与现有三个插件一致。

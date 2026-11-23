@@ -2,6 +2,7 @@ package com.lifehub.app
 
 import android.app.Application
 import com.lifehub.app.backup.PluginBackupManager
+import com.lifehub.app.backup.ExternalPluginBackup
 import com.lifehub.app.capability.PluginCapabilityBroker
 import com.lifehub.app.capability.PluginCapabilityGrantStore
 import com.lifehub.app.capability.SharedPreferencesCapabilityGrantStore
@@ -21,6 +22,7 @@ import com.lifehub.app.plugin.SharedPreferencesPluginHealthStore
 import com.lifehub.app.plugin.SharedPreferencesPluginStateStore
 import com.lifehub.app.plugin.SharedPreferencesPluginTabPreferenceStore
 import com.lifehub.app.plugin.ZipPluginPackageSource
+import com.lifehub.app.plugin.apk.ApkPluginPackageSource
 import com.lifehub.app.plugin.zip.PluginZipImporter
 import com.lifehub.app.plugin.zip.SharedPreferencesPluginSignerStore
 import com.lifehub.app.plugins.FirstPartyPluginHandlers
@@ -48,8 +50,17 @@ class LifeHubApplication : Application() {
         ZipPluginPackageSource(pluginsDir)
     }
 
+    val apkPluginSource: ApkPluginPackageSource by lazy {
+        ApkPluginPackageSource(
+            context = this,
+            log = { message -> AppLog.event(AppLog.Category.PLUGIN, message) },
+        )
+    }
+
     val pluginPackages: PluginPackageSource by lazy {
-        CompositePluginPackageSource(listOf(builtInPluginSource, externalPluginSource))
+        CompositePluginPackageSource(
+            listOf(builtInPluginSource, externalPluginSource, apkPluginSource),
+        )
     }
 
     private val pluginStateStore: SharedPreferencesPluginStateStore by lazy {
@@ -157,6 +168,7 @@ class LifeHubApplication : Application() {
             storages = pluginStorageFactory,
             health = pluginHealthMonitor,
             assetReader = pluginAssetReader,
+            external = apkPluginSource::dispatchAction,
         )
     }
 
@@ -167,6 +179,7 @@ class LifeHubApplication : Application() {
             storages = pluginStorageFactory,
             health = pluginHealthMonitor,
             assetReader = pluginAssetReader,
+            external = apkPluginSource::dispatchData,
         )
     }
 
@@ -183,6 +196,17 @@ class LifeHubApplication : Application() {
             },
             appVersion = BuildConfig.VERSION_NAME,
             hostVersionCode = BuildConfig.VERSION_CODE,
+            externalBackup = object : ExternalPluginBackup {
+                override fun export(pluginId: String): String? =
+                    apkPluginSource.exportBackup(pluginId)
+
+                override fun import(pluginId: String, payload: String) {
+                    apkPluginSource.importBackup(pluginId, payload).getOrThrow()
+                }
+
+                override fun recordCount(pluginId: String): Int? =
+                    apkPluginSource.backupRecordCount(pluginId)
+            },
         )
     }
 

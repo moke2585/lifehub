@@ -167,7 +167,7 @@ class PluginRegistry(
         }
 
         val seenIds = mutableSetOf<String>()
-        return trusted
+        val descriptors = trusted
             .mapNotNull { folderId ->
                 loadPlugin(
                     folderId = folderId,
@@ -175,12 +175,21 @@ class PluginRegistry(
                     source = sourceOf(packages.trustFor(folderId)),
                 )
             }
+            .toMutableList()
+        val discoveredIds = descriptors.map { it.pluginId }.toSet()
+        packages.placeholders().forEach { placeholder ->
+            if (placeholder.pluginId !in discoveredIds) {
+                descriptors += placeholder
+            }
+        }
+        return descriptors
             .sortedBy { it.pluginId }
             .distinctBy { it.pluginId }
     }
 
     private fun sourceOf(trust: PluginPackageTrust): PluginSource = when (trust) {
         PluginPackageTrust.ZIP_SIGNED -> PluginSource.EXTERNAL_ZIP
+        PluginPackageTrust.APK_PLUGIN_SIGNED -> PluginSource.EXTERNAL_APK
         else -> PluginSource.BUILT_IN
     }
 

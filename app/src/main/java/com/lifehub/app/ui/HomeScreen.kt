@@ -1220,7 +1220,9 @@ internal fun groupPluginsForHome(plugins: List<PluginDescriptor>): HomePluginGro
     return HomePluginGroups(
         enabled = plugins.filter { it.status == PluginStatus.ENABLED },
         attention = plugins.filter {
-            it.status == PluginStatus.INCOMPATIBLE || it.status == PluginStatus.ERROR
+            it.status == PluginStatus.INCOMPATIBLE ||
+                it.status == PluginStatus.ERROR ||
+                it.status == PluginStatus.NOT_INSTALLED
         },
         available = plugins.filter {
             it.status == PluginStatus.INSTALLED ||

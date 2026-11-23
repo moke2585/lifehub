@@ -96,6 +96,7 @@
     <string name="plugin_detail_source">来源：%1$s</string>
     <string name="plugin_source_built_in">内置插件</string>
     <string name="plugin_source_external_zip">外部导入 · 声明式</string>
+    <string name="plugin_source_external_apk">外部安装 · 代码插件</string>
 
     <string name="backup_title">备份与恢复</string>
     <string name="backup_description">备份使用口令加密（AES-256-GCM），文件由你自行保存；应用不会自动上传或同步。导入会覆盖备份中对应插件的现有数据。</string>
@@ -122,6 +123,8 @@
     <string name="plugin_status_uninstalled">已卸载</string>
     <string name="plugin_status_incompatible">不兼容</string>
     <string name="plugin_status_error">错误</string>
+    <string name="plugin_status_not_installed">未安装</string>
+    <string name="plugin_not_installed_message">该插件 APK 未安装或已被卸载。安装插件 APK 后重新打开 LifeHub 即可发现。</string>
 
     <string name="plugin_version_publisher">v%1$s · %2$s</string>
 

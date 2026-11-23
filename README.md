@@ -19,6 +19,7 @@
 - **P8 已完成（首版范围）**：新增 `:dev-harness` 插件包校验与生命周期模拟工具、最小插件模板与 `samples` 示例，以及 [插件开发指南](docs/plugin-development.md)；CI 可运行 `:dev-harness:validatePlugins`。
 - **旅迹插件 v3.0（2026-11-15）**：第一方旅行足迹插件 `com.lifehub.plugin.travel` 采用“中国 → 省 → 市 → 区县”逐级下钻：全国地图同时绘制省界与市界（颜色、粗细不同），点击省份进入省地图，点击城市进入区县地图。点亮、地区评分、评论三者完全独立：地区评分使用五星控件、只保留一个并可随时修改；评论可多次发布、每条只含文字。市评分等于下属已点亮且有评分的区县均分，省评分等于下属已点亮且有评分的市均分，并在省/市地图标签与顶部指标中展示。旧版备注与 v2 随评评分通过 `dataSchemaVersion 3` 迁移：备注转为评论，随评评分聚合为地区评分，点亮记录保持不变。顶栏“我的评论”入口按时间收纳全部评论并标注省/市/区县与地区评分。全国一级页只显示省名与省评分，已点亮城市仅以绿色填充呈现；顶栏“评分榜”分省榜、市榜、县区榜，只收录已评分地区并按均分降序排列，同时提示已点亮但未评分的地区数量。一级页地图支持双指缩放、拖动与地图下方的倍率滑块，省名字号随省份面积与缩放自适应；顶栏新增地区搜索，可按名称直达省/市/区县，直接点亮或进入评分、评论；一级页可导出 3288×2747 的高清地图，左下角带导出日期并保存到系统相册。地图使用宿主 `geoMap` 节点与 `assetReader` 只读资产能力；内置地图以阿里云 DataV GeoAtlas 边界数据为主，东莞、中山、儋州、嘉峪关、天门、石河子、五家渠、北屯、铁门关、昆玉等没有区县的直筒子市/省直辖县级单位改用 OpenStreetMap 的乡镇街道边界（© OpenStreetMap contributors，ODbL）离线补齐。来源与处理方式见 [插件页面 schema v1](docs/plugin-schema-v1.md#地图数据)。
 - **外部 ZIP 插件（阶段 C，2026-11-23）**：支持 `.lhplugin` 离线导入。主页顶栏“导入插件”通过系统文件选择器读取包，校验 ZIP 结构、路径、资源限额、页面 schema 与 ECDSA P-256 签名后展示名称、版本、发布者、能力和签名者指纹；确认后原子安装到 App 私有目录，失败恢复旧版本。内置与外部插件通过组合包源并存，外部插件标记为“外部导入 · 声明式”，备份仍走宿主 `PluginStorage`。规范见 [`.lhplugin` v1](docs/lhplugin-v1.md)。
+- **APK 插件 PoC（阶段 D，2026-11-23）**：任务清单迁移为独立 headless APK，页面仍由宿主渲染；宿主通过自定义 intent + `ContentProvider` 发现插件，action/data/备份走 Binder，插件使用自己的 SQLite。备份 v1 新增 `externalPayload`，旧宿主集合备份可自动迁移。卸载插件 APK 后首页显示“任务清单 · 未安装”，不影响宿主启动；重装后可重新发现。契约见 [APK 插件契约 v1](docs/apk-plugin-v1.md)。
 - **P9 主体完成**：版本号 1.0.0、[隐私与数据说明](docs/privacy.md)、[发布检查表](docs/release-checklist.md)、release 签名校验任务与 [CI 发布工作流](.github/workflows/release.yml)。已在 vivo V2338A / Android 16 与三星 SM-X610 平板横屏上完成启用授权、记账、任务清单、统计、暗色模式、200% 字体、横屏、备份导出导入与应用升级回归；平板 ≥840dp 时任务与账本采用 38%/62% 双栏。页面栈、底部标签、日期条和 vivo 文件选择器兼容问题已修复。真实内存压力与故障注入项由单元测试覆盖或列入后续补测。
 - **任务清单与旅迹细节优化（2026-11-20）**：任务清单筛选默认“全部”，搜索改为顶栏放大镜并新增独立搜索页；筛选、排序改为漏斗/三条线图标选择器并同行排列；任务卡片把编辑、完成、置顶收进行尾三点菜单，主体留给任务信息。旅迹一级页与省、市区县地图均支持双指缩放、拖动与地图下方倍率滑块；高清导出左上角标题改为“旅迹·中国”。
 - **记账借还与自定义分类（2026-11-20）**：记账搜索改为顶栏放大镜并新增独立搜索页；分类支持自由输入与 40 个 Emoji 图标，新增“从分类库选择”页，自定义分类保存后自动记住图标；新增“借钱/还钱”分类与右上角借还台账：区分我借出（应收）与我借入（应付），还款可关联原借款并自动冲减剩余金额，未关联的还款可在台账中匹配；任务编辑的图标从 10 个扩展到 40 个。
@@ -26,7 +27,7 @@
 - **Material 3 Expressive 视觉重构（2026-11-22）**：功能与“一切皆插件”的架构保持不变，只调整主题与呈现。采用 Google 官方 `material3-adaptive-navigation-suite`：手机底部导航栏、平板自动切换左侧 `NavigationRail`；形状 token 放大为非对称大圆角，动效改为弹簧与错峰入场；首页新增生成式壁纸背景、渐变 Hero、工具插画与空态插画；插件页面卡片、记录行徽章与空态同步统一。支持动态取色（Android 12+）与应用内“减少动效”。官方开源依赖与素材授权见 [设计参考](#设计参考)。
 - **主页与插件页背景（2026-11-22）**：主页换用两张新生成的 Material You 抽象壁纸（浅色鼠尾草绿/奶油、深色森林绿）；记账、任务清单、旅迹各配浅/深两版插件页背景（金色圆环、纸张层次、等高线等低对比主题），顶部可见、向下渐隐，列表与图表保持可读。插件页不显示品牌横幅。指标卡改为大号主指标 + 等宽数字小卡，窄栏自动折行避免金额截断；周期导航改为 tonal 圆形箭头并居中“回到今天”；柱状图改为渐变圆角柱并按月份自动收窄列宽，环图中心金额放大；地图圆角与图例改为胶囊样式，空态与卡片描边统一。所有改动只涉及渲染器与静态素材，插件 schema、action 与数据行为未变。
 
-首版插件形态为 APK 内置声明式插件包 + 第一方 Kotlin action；后续版本按 [ADR-0006](docs/decisions/0006-external-plugin-packaging.md)/[ADR-0007](docs/decisions/0007-third-party-distribution.md) 增加外部 `.lhplugin` 与 APK 插件，不引入宿主内动态 dex/so 加载。
+首版插件形态为 APK 内置声明式插件包 + 第一方 Kotlin action；后续版本按 [ADR-0006](docs/decisions/0006-external-plugin-packaging.md)/[ADR-0007](docs/decisions/0007-third-party-distribution.md) 增加外部 `.lhplugin` 与 APK 插件。APK 插件是独立进程，通过 provider 返回 manifest/页面 JSON 并处理 action/data，宿主仍不加载动态 dex/so。
 
 ## 仓库布局
 
@@ -46,6 +47,7 @@ __name__/
 
 - 开发指南：[docs/plugin-development.md](docs/plugin-development.md)
 - `.lhplugin` v1 规范：[docs/lhplugin-v1.md](docs/lhplugin-v1.md)
+- APK 插件契约：[docs/apk-plugin-v1.md](docs/apk-plugin-v1.md)
 - 最小模板：[samples/com.lifehub.plugin.template](samples/com.lifehub.plugin.template)
 - 内置插件：Hello 位于 `app/src/main/assets/plugins/`；记账、任务清单、旅迹分别在 `../lifehub-plugin-ledger|memo|travel/src/main/assets/plugins/`
 - 校验全部内置插件与示例：
@@ -102,7 +104,7 @@ sdk.dir=E\:\\app_data\\Android
 
 ```powershell
 $env:JAVA_HOME="C:\path\to\jdk-17"
-.\gradlew.bat testDebugUnitTest :plugin-runtime:test :plugin-api:test lintDebug assembleDebug
+.\gradlew.bat testDebugUnitTest :plugin-runtime:test :plugin-api:test lintDebug assembleDebug :plugins:memo-apk:assembleDebug
 ```
 
 调试 APK 输出在 `app/build/outputs/apk/debug/`。发布签名通过环境变量或 Gradle 属性注入，私钥不入库：
@@ -130,12 +132,13 @@ $env:LIFEHUB_RELEASE_KEY_PASSWORD="..."
 | `:plugin-api` | 插件 SDK 契约：manifest、描述符、状态、生命周期、兼容性校验 |
 | `:plugin-runtime` | 插件模块契约 `PluginModule`、宿主侧通用存储工具、`.lhplugin` 读取与验签 |
 | `:plugins:ledger` | 记账插件：代码 + manifest/pages/assets |
-| `:plugins:memo` | 任务清单插件：代码 + manifest/pages/assets |
+| `:plugins:memo` | 任务清单插件代码与 manifest/pages/assets（APK 插件的共享库） |
+| `:plugins:memo-apk` | 任务清单 headless APK：provider + 自有 SQLite（阶段 D PoC） |
 | `:plugins:travel` | 旅迹插件：Android library，含地图导出 |
 | `:plugin-testing` | 插件模块单元测试使用的内存存储 |
 | `:dev-harness` | 插件包校验与生命周期模拟工具 |
 
-新增第一方插件时，在与宿主同级的 `lifehub-plugin-<name>/` 建独立仓库，并在 `settings.gradle.kts` 中以 `projectDir` 纳入构建、加入 `FirstPartyPluginHandlers.modules`，资产放到模块的 `src/main/assets/plugins/<pluginId>/`。第三方声明式插件可打包为带 `manifest.sig` 的 `.lhplugin` 离线导入。插件市场与外部 APK 形态见 [实施计划](docs/plugin-market-plan.md)。
+新增第一方插件时，在与宿主同级的 `lifehub-plugin-<name>/` 建独立仓库，并在 `settings.gradle.kts` 中以 `projectDir` 纳入构建、加入 `FirstPartyPluginHandlers.modules`，资产放到模块的 `src/main/assets/plugins/<pluginId>/`。第三方声明式插件可打包为带 `manifest.sig` 的 `.lhplugin` 离线导入；需要代码或原生能力的插件发布为独立 APK，通过 [APK 插件契约 v1](docs/apk-plugin-v1.md) 接入。插件市场与外部 APK 形态见 [实施计划](docs/plugin-market-plan.md)。
 
 ## 后续步骤
 

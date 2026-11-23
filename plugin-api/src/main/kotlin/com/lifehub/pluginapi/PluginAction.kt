@@ -1,9 +1,12 @@
 package com.lifehub.pluginapi
 
+import kotlinx.serialization.Serializable
+
 /**
  * 插件 action 的调用契约。宿主只把经过 schema 校验的动作转成请求，
  * 能力与权限复核在后续数据/运行时阶段接入。
  */
+@Serializable
 data class PluginActionRequest(
     val pluginId: String,
     val pageId: String,
@@ -11,16 +14,21 @@ data class PluginActionRequest(
     val params: Map<String, String> = emptyMap(),
 )
 
+@Serializable
 sealed interface PluginActionResult {
+    @Serializable
     data object Success : PluginActionResult
 
+    @Serializable
     data class ShowMessage(val message: String) : PluginActionResult
 
+    @Serializable
     data class Navigate(
         val pageId: String,
         val params: Map<String, String> = emptyMap(),
     ) : PluginActionResult
 
+    @Serializable
     data class Refresh(
         val message: String? = null,
         /** 可选的撤销动作文案，例如“撤销”。 */
@@ -31,12 +39,14 @@ sealed interface PluginActionResult {
         val clearInputIds: List<String> = emptyList(),
     ) : PluginActionResult
 
+    @Serializable
     data class Failure(val message: String) : PluginActionResult
 
     /**
      * 插件生成一张图片，由宿主保存到系统相册。
      * 插件只负责像素与文件名，不直接接触 Android 存储 API。
      */
+    @Serializable
     data class ExportImage(
         val fileName: String,
         val pngBytes: ByteArray,

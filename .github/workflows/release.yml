@@ -14,6 +14,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 宿主构建要求插件仓库与宿主同级；公开仓库可直接用 github.token，
+      # 私有仓库需额外配置 LIFEHUB_PLUGIN_REPOS_TOKEN（contents: read）。
+      - name: Checkout ledger plugin repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/lifehub-plugin-ledger
+          token: ${{ secrets.LIFEHUB_PLUGIN_REPOS_TOKEN || github.token }}
+          path: plugin-src/ledger
+
+      - name: Checkout memo plugin repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/lifehub-plugin-memo
+          token: ${{ secrets.LIFEHUB_PLUGIN_REPOS_TOKEN || github.token }}
+          path: plugin-src/memo
+
+      - name: Checkout travel plugin repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/lifehub-plugin-travel
+          token: ${{ secrets.LIFEHUB_PLUGIN_REPOS_TOKEN || github.token }}
+          path: plugin-src/travel
+
+      - name: Arrange sibling plugin repositories
+        run: |
+          mv plugin-src/ledger ../lifehub-plugin-ledger
+          mv plugin-src/memo ../lifehub-plugin-memo
+          mv plugin-src/travel ../lifehub-plugin-travel
+          rmdir plugin-src
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -38,28 +68,32 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/lifehub-release.keystore"
           test -s "$RUNNER_TEMP/lifehub-release.keystore"
 
-      - name: Build signed release APK
+      - name: Build signed release APKs
         env:
           LIFEHUB_RELEASE_STORE_FILE: ${{ runner.temp }}/lifehub-release.keystore
           LIFEHUB_RELEASE_STORE_PASSWORD: ${{ secrets.LIFEHUB_RELEASE_STORE_PASSWORD }}
           LIFEHUB_RELEASE_KEY_ALIAS: ${{ secrets.LIFEHUB_RELEASE_KEY_ALIAS }}
           LIFEHUB_RELEASE_KEY_PASSWORD: ${{ secrets.LIFEHUB_RELEASE_KEY_PASSWORD }}
-        run: ./gradlew :app:checkReleasePrerequisites -PlifehubRequireReleaseSigning=true :app:assembleRelease --stacktrace
+        run: ./gradlew :app:checkReleasePrerequisites -PlifehubRequireReleaseSigning=true :app:assembleRelease :plugins:memo-apk:assembleRelease --stacktrace
 
-      - name: Verify APK signature
+      - name: Verify APK signatures
         run: |
           APKSIGNER=$(find "${ANDROID_HOME}/build-tools" -type f -name apksigner | sort -V | tail -n 1)
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --print-certs app/build/outputs/apk/release/app-release.apk
+          "$APKSIGNER" verify --print-certs ../lifehub-plugin-memo/apk/build/outputs/apk/release/memo-apk-release.apk
 
       - name: Write checksums and build info
         run: |
+          cp ../lifehub-plugin-memo/apk/build/outputs/apk/release/memo-apk-release.apk .
           sha256sum app/build/outputs/apk/release/app-release.apk > app-release.sha256
+          sha256sum memo-apk-release.apk > memo-apk-release.sha256
           {
             echo "commit=$(git rev-parse HEAD)"
             echo "java=$(java -version 2>&1 | head -n 1)"
             echo "gradle=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | cut -d'=' -f2)"
             echo "apk_sha256=$(cut -d' ' -f1 app-release.sha256)"
+            echo "memo_apk_sha256=$(cut -d' ' -f1 memo-apk-release.sha256)"
           } > build-info.txt
           cat build-info.txt
 
@@ -69,4 +103,6 @@ jobs:
           path: |
             app/build/outputs/apk/release/app-release.apk
             app-release.sha256
+            memo-apk-release.apk
+            memo-apk-release.sha256
             build-info.txt

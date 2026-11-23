@@ -12,11 +12,14 @@ enum class PluginStatus {
     UNINSTALLED,
     INCOMPATIBLE,
     ERROR,
+    /** 已知的外部 APK 插件当前未安装。 */
+    NOT_INSTALLED,
 }
 
 enum class PluginSource {
     BUILT_IN,
     EXTERNAL_ZIP,
+    EXTERNAL_APK,
 }
 
 enum class PluginIssueCode {

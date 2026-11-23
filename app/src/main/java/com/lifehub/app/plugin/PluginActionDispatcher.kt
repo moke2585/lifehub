@@ -8,6 +8,7 @@ import com.lifehub.pluginapi.PluginActionHandler
 import com.lifehub.pluginapi.PluginActionRequest
 import com.lifehub.pluginapi.PluginActionResult
 import com.lifehub.pluginapi.PluginCapabilities
+import com.lifehub.pluginapi.PluginSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,6 +23,7 @@ class PluginActionDispatcher(
     private val storages: PluginStorageFactory,
     private val health: PluginHealthMonitor? = null,
     private val assetReader: ((pluginId: String, path: String) -> String?)? = null,
+    private val external: ((PluginActionRequest) -> PluginActionResult?)? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     suspend fun dispatch(request: PluginActionRequest): PluginActionResult =
@@ -31,11 +33,20 @@ class PluginActionDispatcher(
                 CapabilityDecision.Granted -> Unit
             }
 
+            val descriptor = capabilities.descriptor(request.pluginId)
             val handler = handlers[request.actionId]
-                ?: return@withContext PluginActionResult.Failure("未注册的插件动作：${request.actionId}")
+            if (handler == null) {
+                if (descriptor?.source == PluginSource.EXTERNAL_APK) {
+                    val result = external?.invoke(request)
+                        ?: PluginActionResult.Failure("插件 APK 未安装：${request.pluginId}")
+                    health?.recordSuccess(request.pluginId)
+                    return@withContext result
+                }
+                return@withContext PluginActionResult.Failure("未注册的插件动作：${request.actionId}")
+            }
 
             runCatching {
-                val schemaVersion = capabilities.descriptor(request.pluginId)
+                val schemaVersion = descriptor
                     ?.manifest
                     ?.dataSchemaVersion
                     ?: 1

@@ -1,5 +1,6 @@
 package com.lifehub.app.plugin
 
+import com.lifehub.pluginapi.PluginDescriptor
 import com.lifehub.pluginapi.PluginPathRules
 import java.io.File
 import java.io.InputStream
@@ -59,6 +60,11 @@ class CompositePluginPackageSource(
 
     override fun trustFor(pluginId: String): PluginPackageTrust =
         owner(pluginId)?.trustFor(pluginId) ?: PluginPackageTrust.UNTRUSTED
+
+    override fun placeholders(): List<PluginDescriptor> =
+        sources.flatMap { it.placeholders() }
+            .filter { placeholder -> placeholder.pluginId !in pluginIds() }
+            .distinctBy { it.pluginId }
 
     private fun owner(pluginId: String): PluginPackageSource? =
         sources.firstOrNull { pluginId in it.pluginIds() }

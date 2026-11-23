@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Android 11+ 包可见性：只声明插件 APK provider 使用的自定义 action。 -->
+    <queries>
+        <intent>
+            <action android:name="com.lifehub.plugin.apk.PROVIDER" />
+        </intent>
+    </queries>
+
     <application
         android:name=".LifeHubApplication"
         android:allowBackup="false"

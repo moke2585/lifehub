@@ -1,6 +1,7 @@
 package com.lifehub.app.plugin
 
 import android.content.res.AssetManager
+import com.lifehub.pluginapi.PluginDescriptor
 import com.lifehub.pluginapi.PluginPathRules
 import java.io.InputStream
 
@@ -10,6 +11,9 @@ enum class PluginPackageTrust {
 
     /** 外部导入的 `.lhplugin`：导入时已校验包签名并固定签名者。 */
     ZIP_SIGNED,
+
+    /** 已安装的独立插件 APK：由 Android 包管理器和 APK 签名保证完整性。 */
+    APK_PLUGIN_SIGNED,
 
     /** 未经过宿主信任校验的来源；注册表拒绝加载。 */
     UNTRUSTED,
@@ -25,6 +29,12 @@ interface PluginPackageSource {
     fun open(pluginId: String, relativePath: String): InputStream?
 
     fun trustFor(pluginId: String): PluginPackageTrust
+
+    /**
+     * 已知但当前不可用的插件占位（例如已卸载的 APK 插件）。
+     * 注册表会把这些条目合并到列表中，显示“未安装”而不是直接消失。
+     */
+    fun placeholders(): List<PluginDescriptor> = emptyList()
 }
 
 class AssetPluginPackageSource(
@@ -64,6 +74,7 @@ class PluginTrustPolicy(
     private val allowedTrust: Set<PluginPackageTrust> = setOf(
         PluginPackageTrust.APK_SIGNED,
         PluginPackageTrust.ZIP_SIGNED,
+        PluginPackageTrust.APK_PLUGIN_SIGNED,
     ),
 ) {
     fun verify(trust: PluginPackageTrust): PluginTrustDecision =

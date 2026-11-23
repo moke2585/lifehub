@@ -129,7 +129,7 @@ com.example.myplugin/
 
 ## 9. 签名与信任
 
-内置插件随已签名的 APK 分发，APK v2+ 签名是信任锚；外部 `.lhplugin` 使用 `manifest.sig` 中的 ECDSA P-256 签名，导入时校验并固定签名者。不要把私钥、口令或签名材料提交到仓库。
+内置插件随已签名的 APK 分发，APK v2+ 签名是信任锚；外部 `.lhplugin` 使用 `manifest.sig` 中的 ECDSA P-256 签名，导入时校验并固定签名者；独立 APK 插件由 Android 包管理器验证签名，升级必须使用同一签名。不要把私钥、口令或签名材料提交到仓库。
 
 `.lhplugin` 的 ZIP 布局、资源限额、签名 JSON 字段与签名载荷见 [`.lhplugin` v1 规范](lhplugin-v1.md)。第一方插件全部内置时不需要 `manifest.sig`；导出为外部包时必须生成。
 
@@ -175,7 +175,19 @@ com.example.myplugin/
 
 CI 可直接运行 `.\gradlew.bat :dev-harness:validatePlugins`，失败时退出码为 1。
 
-## 11. 常见错误
+## 11. APK 插件（阶段 D）
+
+需要 Kotlin 代码、私有数据库或原生能力的插件可以发布为独立 headless APK。宿主仍负责页面渲染，插件通过 `ContentProvider` 返回 manifest/页面 JSON，并处理 `action`、`data`、`exportBackup`、`importBackup`。
+
+- 契约与安全边界：[APK 插件契约 v1](apk-plugin-v1.md)
+- 任务清单 PoC 源码：`lifehub-plugin-memo/apk/`
+- 构建：`.\gradlew.bat :plugins:memo-apk:assembleDebug`
+- 安装：`adb install -r lifehub-plugin-memo/apk/build/outputs/apk/debug/memo-apk-debug.apk`
+- 卸载后宿主显示“未安装”占位；重装后重新发现，数据通过备份恢复。
+
+APK 插件不得在宿主进程内加载 dex/so；页面 schema 与能力声明仍与内置插件一致。大于 512 KiB 的响应需要文件通道，当前 v1 不支持。
+
+## 12. 常见错误
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
@@ -188,7 +200,7 @@ CI 可直接运行 `.\gradlew.bat :dev-harness:validatePlugins`，失败时退�
 | `未注册的插件动作` | 使用了 `host` action 但宿主未注册 | 在宿主注册 `PluginActionHandler`，或改用 `navigate` |
 | `未注册的数据源` | 使用了 `sourceId` 但宿主未注册 | 在宿主注册 `PluginPageDataHandler` |
 
-## 12. 发布前检查
+## 13. 发布前检查
 
 - [ ] `:dev-harness:validatePlugins` 通过，且 `--strict` 无 warning。
 - [ ] 页面覆盖加载、空、失败状态，支持字体放大与暗色模式。

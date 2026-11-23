@@ -1,9 +1,12 @@
 package com.lifehub.pluginapi
 
+import kotlinx.serialization.Serializable
+
 /**
  * 动态数据源：插件页面中的 recordList 节点按 sourceId 向宿主请求内容。
  * 数据源由第一方插件注册，宿主负责能力授权、存储注入与输出限额校验。
  */
+@Serializable
 data class PluginPageDataRequest(
     val pluginId: String,
     val pageId: String,
@@ -19,11 +22,13 @@ data class PluginPageDataContext(
 )
 
 /** 归一化地图坐标，x/y 均在 0..1。 */
+@Serializable
 data class PluginGeoPoint(
     val x: Float,
     val y: Float,
 )
 
+@Serializable
 enum class PluginGeoLevel {
     PROVINCE,
     CITY,
@@ -31,6 +36,7 @@ enum class PluginGeoLevel {
 }
 
 /** 地图区域：省界只描边，市/区县可点亮、可点击。 */
+@Serializable
 data class PluginGeoRegion(
     val id: String,
     val name: String,
@@ -51,6 +57,7 @@ data class PluginGeoRegion(
     val rings: List<List<PluginGeoPoint>> = emptyList(),
 )
 
+@Serializable
 data class PluginGeoMapData(
     val title: String = "",
     val subtitle: String = "",
@@ -59,6 +66,7 @@ data class PluginGeoMapData(
     val regions: List<PluginGeoRegion> = emptyList(),
 )
 
+@Serializable
 data class PluginDataItem(
     val id: String,
     val title: String,
@@ -91,18 +99,21 @@ data class PluginDataItem(
     val actionsInMenu: Boolean = false,
 )
 
+@Serializable
 enum class PluginDataTone {
     NEUTRAL,
     POSITIVE,
     NEGATIVE,
 }
 
+@Serializable
 data class PluginDataAction(
     val label: String,
     val action: PluginAction,
     val emphasis: PluginButtonEmphasis = PluginButtonEmphasis.SECONDARY,
 )
 
+@Serializable
 data class PluginDataResult(
     val items: List<PluginDataItem> = emptyList(),
     val metrics: List<PluginMetric> = emptyList(),
@@ -118,18 +129,21 @@ data class PluginDataResult(
     val geo: PluginGeoMapData? = null,
 )
 
+@Serializable
 data class PluginSegment(
     val label: String,
     val value: String,
     val ratio: Float,
 )
 
+@Serializable
 data class PluginBar(
     val label: String,
     val value: String,
     val ratio: Float,
 )
 
+@Serializable
 data class PluginMetric(
     val label: String,
     val value: String,

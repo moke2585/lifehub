@@ -25,6 +25,8 @@ data class BackupPluginData(
     val pluginId: String,
     val dataSchemaVersion: Int,
     val collections: List<BackupCollection>,
+    /** APK 插件使用自有数据库，备份为 provider 导出的不透明 JSON。 */
+    val externalPayload: String? = null,
 )
 
 @Serializable

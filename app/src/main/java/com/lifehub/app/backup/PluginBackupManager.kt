@@ -3,6 +3,10 @@ package com.lifehub.app.backup
 import com.lifehub.app.data.PluginDataSchemaStore
 import com.lifehub.app.data.PluginRecordRules
 import com.lifehub.pluginapi.PluginDescriptor
+import com.lifehub.pluginapi.PluginDataSnapshot
+import com.lifehub.pluginapi.PluginSnapshotCollection
+import com.lifehub.pluginapi.PluginSnapshotRecord
+import com.lifehub.pluginapi.PluginSource
 import com.lifehub.pluginapi.PluginStatus
 import com.lifehub.pluginapi.PluginStorage
 import com.lifehub.pluginapi.PluginStorageLimits
@@ -32,6 +36,7 @@ class PluginBackupManager(
     private val storageProvider: (PluginDescriptor) -> PluginStorage,
     private val appVersion: String,
     private val hostVersionCode: Int,
+    private val externalBackup: ExternalPluginBackup? = null,
 ) {
     private val json = Json {
         ignoreUnknownKeys = true
@@ -64,17 +69,35 @@ class PluginBackupManager(
         descriptors.forEach { descriptor ->
             val manifest = descriptor.manifest ?: return@forEach
             validatePluginId(descriptor.pluginId)
-            val storage = openStorage(descriptor)
-            val collections = storage.collections().map { collection ->
-                BackupCollection(
-                    collection = collection,
-                    records = readAll(storage, collection),
-                )
+
+            val externalPayload = if (descriptor.source == PluginSource.EXTERNAL_APK) {
+                externalBackup?.export(descriptor.pluginId)
+                    ?: throw BackupException("无法从插件 APK 导出数据：${descriptor.displayName}")
+            } else {
+                null
             }
+            val collections = if (externalPayload == null) {
+                val storage = openStorage(descriptor)
+                storage.collections().map { collection ->
+                    BackupCollection(
+                        collection = collection,
+                        records = readAll(storage, collection),
+                    )
+                }
+            } else {
+                emptyList()
+            }
+            val recordCount = if (externalPayload == null) {
+                collections.sumOf { it.records.size }
+            } else {
+                validateExternalSnapshot(descriptor, externalPayload).recordCount
+            }
+
             val data = BackupPluginData(
                 pluginId = descriptor.pluginId,
                 dataSchemaVersion = manifest.dataSchemaVersion,
                 collections = collections,
+                externalPayload = externalPayload,
             )
             entries["data/${descriptor.pluginId}.json"] = encode(data)
             pluginInfos += BackupPluginInfo(
@@ -82,7 +105,7 @@ class PluginBackupManager(
                 name = descriptor.displayName,
                 pluginVersion = manifest.version,
                 dataSchemaVersion = manifest.dataSchemaVersion,
-                recordCount = collections.sumOf { it.records.size },
+                recordCount = recordCount,
             )
         }
 
@@ -164,9 +187,12 @@ class PluginBackupManager(
             if (data.dataSchemaVersion != info.dataSchemaVersion) {
                 throw BackupException("插件数据版本与清单不一致：${info.pluginId}")
             }
-            validatePluginData(data)
-
-            val recordCount = data.collections.sumOf { it.records.size }
+            val recordCount = if (data.externalPayload != null) {
+                validateExternalSnapshot(descriptor, data.externalPayload).recordCount
+            } else {
+                validatePluginData(data)
+                data.collections.sumOf { it.records.size }
+            }
             if (recordCount != info.recordCount) {
                 throw BackupException(
                     "插件 ${descriptor.displayName} 记录数不一致：" +
@@ -175,7 +201,11 @@ class PluginBackupManager(
             }
 
             pluginData[info.pluginId] = data
-            existingCounts[info.pluginId] = existingRecordCount(openStorage(descriptor))
+            existingCounts[info.pluginId] = if (descriptor.source == PluginSource.EXTERNAL_APK) {
+                externalBackup?.recordCount(descriptor.pluginId) ?: 0
+            } else {
+                existingRecordCount(openStorage(descriptor))
+            }
         }
 
         val expectedDataEntries = archive.plugins.map { "data/${it.pluginId}.json" }.toSet()
@@ -198,6 +228,22 @@ class PluginBackupManager(
         preview.pluginData.values.forEach { data ->
             val descriptor = preview.descriptors[data.pluginId]
                 ?: throw BackupException("插件不存在：${data.pluginId}")
+
+            if (descriptor.source == PluginSource.EXTERNAL_APK) {
+                val payload = data.externalPayload ?: encodeSnapshot(data)
+                val backup = externalBackup
+                    ?: throw BackupException("插件 APK 备份桥不可用：${descriptor.displayName}")
+                try {
+                    backup.import(descriptor.pluginId, payload)
+                } catch (error: Exception) {
+                    throw BackupException(
+                        "导入 ${descriptor.displayName} 失败：${error.message ?: "未知错误"}",
+                        error,
+                    )
+                }
+                return@forEach
+            }
+
             val storage = openStorage(descriptor)
             val schemaStore = storage as? PluginDataSchemaStore
                 ?: throw BackupException("存储实现不支持事务，无法安全导入")
@@ -252,6 +298,78 @@ class PluginBackupManager(
                 error,
             )
         }
+
+    private fun validateExternalSnapshot(
+        descriptor: PluginDescriptor,
+        raw: String,
+    ): PluginDataSnapshot {
+        if (raw.toByteArray(Charsets.UTF_8).size > BackupLimits.MAX_ARCHIVE_BYTES) {
+            throw BackupException("插件 ${descriptor.displayName} 的备份数据超过大小上限")
+        }
+        val snapshot = try {
+            json.decodeFromString<PluginDataSnapshot>(raw)
+        } catch (error: Exception) {
+            throw BackupException(
+                "插件 ${descriptor.displayName} 的备份数据无法解析：${error.message ?: "未知错误"}",
+                error,
+            )
+        }
+        if (snapshot.pluginId != descriptor.pluginId) {
+            throw BackupException("插件备份 ID 不匹配：${snapshot.pluginId}")
+        }
+        val manifest = descriptor.manifest
+            ?: throw BackupException("插件 ${descriptor.pluginId} 的清单不可用")
+        if (snapshot.dataSchemaVersion != manifest.dataSchemaVersion) {
+            throw BackupException(
+                "插件 ${descriptor.displayName} 的数据版本不兼容：" +
+                    "备份为 v${snapshot.dataSchemaVersion}，当前为 v${manifest.dataSchemaVersion}",
+            )
+        }
+
+        try {
+            val collectionNames = mutableSetOf<String>()
+            snapshot.collections.forEach { collection ->
+                PluginRecordRules.requireCollection(collection.collection)
+                if (!collectionNames.add(collection.collection)) {
+                    throw BackupException("集合重复：${collection.collection}")
+                }
+                if (collection.records.size > PluginStorageLimits.MAX_RECORDS_PER_COLLECTION) {
+                    throw BackupException("集合 ${collection.collection} 记录数超过上限")
+                }
+                val recordIds = mutableSetOf<String>()
+                collection.records.forEach { record ->
+                    PluginRecordRules.requireId(record.id)
+                    PluginRecordRules.requirePayload(record.payload)
+                    if (!recordIds.add(record.id)) {
+                        throw BackupException(
+                            "集合 ${collection.collection} 存在重复记录：${record.id}",
+                        )
+                    }
+                }
+            }
+        } catch (error: BackupException) {
+            throw error
+        } catch (error: IllegalArgumentException) {
+            throw BackupException("备份记录不合法：${error.message ?: "未知错误"}", error)
+        }
+        return snapshot
+    }
+
+    private fun encodeSnapshot(data: BackupPluginData): String =
+        encode(
+            PluginDataSnapshot(
+                pluginId = data.pluginId,
+                dataSchemaVersion = data.dataSchemaVersion,
+                collections = data.collections.map { collection ->
+                    PluginSnapshotCollection(
+                        collection = collection.collection,
+                        records = collection.records.map { record ->
+                            PluginSnapshotRecord(id = record.id, payload = record.payload)
+                        },
+                    )
+                },
+            ),
+        ).toString(Charsets.UTF_8)
 
     private fun validatePluginData(data: BackupPluginData) {
         try {

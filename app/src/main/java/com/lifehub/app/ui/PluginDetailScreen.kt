@@ -138,7 +138,11 @@ fun PluginDetailScreen(
             val manifest = descriptor.manifest
             if (manifest == null) {
                 Text(
-                    text = stringResource(R.string.plugin_manifest_unreadable_message),
+                    text = if (descriptor.status == PluginStatus.NOT_INSTALLED) {
+                        stringResource(R.string.plugin_not_installed_message)
+                    } else {
+                        stringResource(R.string.plugin_manifest_unreadable_message)
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -153,6 +157,7 @@ fun PluginDetailScreen(
                 val sourceLabel = when (descriptor.source) {
                     PluginSource.BUILT_IN -> stringResource(R.string.plugin_source_built_in)
                     PluginSource.EXTERNAL_ZIP -> stringResource(R.string.plugin_source_external_zip)
+                    PluginSource.EXTERNAL_APK -> stringResource(R.string.plugin_source_external_apk)
                 }
 
                 Card(

@@ -9,6 +9,7 @@ import com.lifehub.pluginapi.PluginDataResult
 import com.lifehub.pluginapi.PluginPageDataContext
 import com.lifehub.pluginapi.PluginPageDataHandler
 import com.lifehub.pluginapi.PluginPageDataRequest
+import com.lifehub.pluginapi.PluginSource
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,6 +23,7 @@ class PluginDataDispatcher(
     private val storages: PluginStorageFactory,
     private val health: PluginHealthMonitor? = null,
     private val assetReader: ((pluginId: String, path: String) -> String?)? = null,
+    private val external: ((PluginPageDataRequest) -> PluginDataResult?)? = null,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     suspend fun load(request: PluginPageDataRequest): PluginDataResult = withContext(ioDispatcher) {
@@ -36,14 +38,28 @@ class PluginDataDispatcher(
                 CapabilityDecision.Granted -> Unit
             }
 
+            val descriptor = capabilities.descriptor(request.pluginId)
             val handler = handlers[sourceKey(request.pluginId, request.sourceId)]
-                ?: return@withContext PluginDataResult(
+            if (handler == null) {
+                if (descriptor?.source == PluginSource.EXTERNAL_APK) {
+                    val result = external?.invoke(request)
+                        ?: PluginDataResult(
+                            emptyTitle = "无法加载",
+                            emptyMessage = "插件 APK 未安装：${request.pluginId}",
+                            isError = true,
+                        )
+                    return@withContext validate(result).also {
+                        health?.recordSuccess(request.pluginId)
+                    }
+                }
+                return@withContext PluginDataResult(
                     emptyTitle = "无法加载",
                     emptyMessage = "未注册的数据源：${request.sourceId}",
                     isError = true,
                 )
+            }
 
-            val schemaVersion = capabilities.descriptor(request.pluginId)
+            val schemaVersion = descriptor
                 ?.manifest
                 ?.dataSchemaVersion
                 ?: 1

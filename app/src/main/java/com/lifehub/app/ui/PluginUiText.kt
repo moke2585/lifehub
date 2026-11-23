@@ -17,6 +17,7 @@ internal fun pluginStatusLabel(status: PluginStatus): String = stringResource(
         PluginStatus.UNINSTALLED -> R.string.plugin_status_uninstalled
         PluginStatus.INCOMPATIBLE -> R.string.plugin_status_incompatible
         PluginStatus.ERROR -> R.string.plugin_status_error
+        PluginStatus.NOT_INSTALLED -> R.string.plugin_status_not_installed
     },
 )
 
@@ -24,8 +25,9 @@ internal fun pluginStatusLabel(status: PluginStatus): String = stringResource(
 internal fun pluginStatusColor(status: PluginStatus): Color = when (status) {
     PluginStatus.ENABLED -> MaterialTheme.colorScheme.primary
     PluginStatus.INCOMPATIBLE, PluginStatus.ERROR -> MaterialTheme.colorScheme.error
-    PluginStatus.INSTALLED, PluginStatus.DISABLED, PluginStatus.UNINSTALLED ->
-        MaterialTheme.colorScheme.onSurfaceVariant
+    PluginStatus.INSTALLED, PluginStatus.DISABLED, PluginStatus.UNINSTALLED,
+    PluginStatus.NOT_INSTALLED,
+    -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 @Composable

@@ -229,6 +229,45 @@ class PluginRegistryTest {
     }
 
     @Test
+    fun apkPluginSourceIsMarkedExternal() = runBlocking {
+        val registry = registry(
+            FakeSource(
+                plugins = mapOf(PLUGIN_ID to validFiles()),
+                trust = PluginPackageTrust.APK_PLUGIN_SIGNED,
+            ),
+        )
+
+        registry.load()
+
+        assertEquals(PluginSource.EXTERNAL_APK, registry.plugin(PLUGIN_ID)?.source)
+        assertEquals(PluginStatus.INSTALLED, registry.plugin(PLUGIN_ID)?.status)
+    }
+
+    @Test
+    fun missingApkPlaceholderIsListedAsNotInstalled() = runBlocking {
+        val placeholder = com.lifehub.pluginapi.PluginDescriptor(
+            pluginId = "com.lifehub.plugin.memo",
+            displayName = "任务清单",
+            manifest = null,
+            status = PluginStatus.NOT_INSTALLED,
+            source = PluginSource.EXTERNAL_APK,
+        )
+        val registry = registry(
+            FakeSource(
+                plugins = mapOf(PLUGIN_ID to validFiles()),
+                placeholders = listOf(placeholder),
+            ),
+        )
+
+        registry.load()
+
+        val plugins = (registry.state.value as PluginRegistryState.Ready).plugins
+        assertEquals(2, plugins.size)
+        assertEquals(PluginStatus.NOT_INSTALLED, registry.plugin("com.lifehub.plugin.memo")?.status)
+        assertEquals("任务清单", registry.plugin("com.lifehub.plugin.memo")?.displayName)
+    }
+
+    @Test
     fun reloadDiscoversNewPlugins() = runBlocking {
         val source = MutableFakeSource(mutableMapOf(PLUGIN_ID to validFiles()))
         val registry = registry(source)
@@ -311,6 +350,7 @@ class PluginRegistryTest {
 private class FakeSource(
     private val plugins: Map<String, Map<String, String>>,
     private val trust: PluginPackageTrust = PluginPackageTrust.APK_SIGNED,
+    private val placeholders: List<com.lifehub.pluginapi.PluginDescriptor> = emptyList(),
 ) : PluginPackageSource {
 
     override fun pluginIds(): List<String> = plugins.keys.toList()
@@ -319,6 +359,8 @@ private class FakeSource(
         plugins[pluginId]?.get(relativePath)?.byteInputStream()
 
     override fun trustFor(pluginId: String): PluginPackageTrust = trust
+
+    override fun placeholders(): List<com.lifehub.pluginapi.PluginDescriptor> = placeholders
 }
 
 private class MutableFakeSource(

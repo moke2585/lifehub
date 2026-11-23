@@ -18,7 +18,11 @@ tasks.register("verifyPluginModuleBoundaries") {
     group = "verification"
     description = "检查插件模块不得引用 app 宿主内部类（plugin-runtime 除外）"
     doLast {
-        val allowedPrefix = "import com.lifehub.app.plugin.runtime."
+        val allowedPrefixes = listOf(
+            "import com.lifehub.app.plugin.runtime.",
+            // 插件模块自身的代码与契约仍位于 com.lifehub.app.plugins 包。
+            "import com.lifehub.app.plugins.",
+        )
         val pluginDirs = listOf(
             rootProject.file("../lifehub-plugin-ledger"),
             rootProject.file("../lifehub-plugin-memo"),
@@ -33,7 +37,7 @@ tasks.register("verifyPluginModuleBoundaries") {
                 .filter { line ->
                     val trimmed = line.trim()
                     trimmed.startsWith("import com.lifehub.app.") &&
-                        !trimmed.startsWith(allowedPrefix)
+                        allowedPrefixes.none { prefix -> trimmed.startsWith(prefix) }
                 }
                 .map { "${file.absolutePath}: ${it.trim()}" }
         }

@@ -2,8 +2,15 @@ package com.lifehub.app.backup
 
 import com.lifehub.app.FakePluginStorage
 import com.lifehub.app.testDescriptor
+import com.lifehub.pluginapi.PluginApkProtocol
+import com.lifehub.pluginapi.PluginDataSnapshot
 import com.lifehub.pluginapi.PluginDescriptor
+import com.lifehub.pluginapi.PluginSnapshotCollection
+import com.lifehub.pluginapi.PluginSnapshotRecord
+import com.lifehub.pluginapi.PluginSource
 import com.lifehub.pluginapi.PluginStorage
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -120,6 +127,67 @@ class PluginBackupManagerTest {
     }
 
     @Test
+    fun externalApkBackupUsesProviderBridge() {
+        val snapshot = PluginDataSnapshot(
+            pluginId = pluginB.pluginId,
+            dataSchemaVersion = 1,
+            collections = listOf(
+                PluginSnapshotCollection(
+                    collection = "memos",
+                    records = listOf(PluginSnapshotRecord("m1", """{"text":"memo"}""")),
+                ),
+            ),
+        )
+        val raw = PluginApkProtocol.json.encodeToString(snapshot)
+        val bridge = RecordingExternalBackup(raw)
+        val apkDescriptor = pluginB.copy(source = PluginSource.EXTERNAL_APK)
+        val manager = PluginBackupManager(
+            pluginProvider = { listOf(apkDescriptor) },
+            storageProvider = { error("APK 插件不应打开宿主存储") },
+            appVersion = "0.1.0",
+            hostVersionCode = 1,
+            externalBackup = bridge,
+        )
+
+        val backup = manager.export(password)
+        val preview = manager.preview(password, backup)
+
+        assertEquals(1, preview.archive.plugins.single().recordCount)
+        assertEquals(1, preview.existingRecordCounts.getValue(pluginB.pluginId))
+
+        manager.apply(preview)
+
+        assertEquals(raw, bridge.imported)
+    }
+
+    @Test
+    fun hostBackupMigratesIntoApkProviderBridge() {
+        val backup = manager().export(password)
+        val bridge = RecordingExternalBackup(payload = null)
+        val apkDescriptor = pluginB.copy(source = PluginSource.EXTERNAL_APK)
+        val manager = PluginBackupManager(
+            pluginProvider = { listOf(pluginA, apkDescriptor) },
+            storageProvider = { descriptor ->
+                if (descriptor.pluginId == pluginA.pluginId) storageA
+                else error("APK 插件不应打开宿主存储")
+            },
+            appVersion = "0.1.0",
+            hostVersionCode = 1,
+            externalBackup = bridge,
+        )
+
+        val preview = manager.preview(password, backup)
+        manager.apply(preview)
+
+        val imported = PluginApkProtocol.json.decodeFromString<PluginDataSnapshot>(
+            requireNotNull(bridge.imported),
+        )
+        assertEquals(pluginB.pluginId, imported.pluginId)
+        assertEquals(listOf("memos"), imported.collections.map { it.collection })
+        assertEquals(listOf("m1"), imported.collections.single().records.map { it.id })
+    }
+
+    @Test
     fun suggestedFileNameUsesZipSuffixForPickerCompatibility() {
         val name = manager().suggestedFileName(now = 0L)
 
@@ -167,4 +235,22 @@ class PluginBackupManagerTest {
         appVersion = "0.1.0",
         hostVersionCode = 1,
     )
+}
+
+private class RecordingExternalBackup(
+    private val payload: String?,
+) : ExternalPluginBackup {
+
+    var imported: String? = null
+
+    override fun export(pluginId: String): String? = payload
+
+    override fun import(pluginId: String, payload: String) {
+        imported = payload
+    }
+
+    override fun recordCount(pluginId: String): Int? =
+        payload?.let {
+            PluginApkProtocol.json.decodeFromString<PluginDataSnapshot>(it).recordCount
+        }
 }
