@@ -1,0 +1,33 @@
+{
+  "pluginId": "com.lifehub.plugin.template",
+  "name": "插件模板",
+  "version": "1.0.0",
+  "description": "最小声明式插件模板。复制后替换 pluginId、名称和页面内容。",
+  "publisher": "LifeHub",
+  "icon": "plugin",
+  "minHostVersion": 1,
+  "pluginSdkVersion": 1,
+  "capabilities": [],
+  "entryPage": "home",
+  "homeWidgets": [
+    {
+      "id": "template_entry",
+      "type": "quick_actions",
+      "title": "模板入口",
+      "size": "small",
+      "priority": 10,
+      "action": {
+        "type": "navigate",
+        "pageId": "home"
+      }
+    }
+  ],
+  "pages": [
+    {
+      "id": "home",
+      "title": "模板首页",
+      "file": "pages/home.json"
+    }
+  ],
+  "dataSchemaVersion": 1
+}

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "pageId": "about",
+  "title": "关于",
+  "nodes": [
+    {
+      "type": "title",
+      "text": "关于示例插件",
+      "level": 2
+    },
+    {
+      "type": "text",
+      "text": "从首页导航到本页时，params.from 会作为输入初值。"
+    },
+    {
+      "type": "input",
+      "id": "from",
+      "label": "来源页面"
+    },
+    {
+      "type": "button",
+      "label": "返回首页",
+      "action": {
+        "type": "navigate",
+        "pageId": "home",
+        "params": {
+          "from": "about"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "pageId": "home",
+  "title": "示例首页",
+  "nodes": [
+    {
+      "type": "title",
+      "text": "Hello Plugin",
+      "level": 1
+    },
+    {
+      "type": "text",
+      "text": "这个页面完全由声明式 schema 渲染，宿主不执行插件脚本或原生视图。"
+    },
+    {
+      "type": "section",
+      "title": "输入组件",
+      "children": [
+        {
+          "type": "input",
+          "id": "name",
+          "label": "你的名字",
+          "placeholder": "请输入名字"
+        },
+        {
+          "type": "input",
+          "id": "amount",
+          "label": "金额示例",
+          "kind": "money",
+          "placeholder": "0.00"
+        },
+        {
+          "type": "input",
+          "id": "date",
+          "label": "日期示例",
+          "kind": "date",
+          "placeholder": "YYYY-MM-DD"
+        }
+      ]
+    },
+    {
+      "type": "button",
+      "label": "打个招呼",
+      "action": {
+        "type": "host",
+        "actionId": "com.lifehub.plugin.hello.greet",
+        "confirm": {
+          "title": "发送输入",
+          "message": "将把当前输入交给插件 action 处理。",
+          "confirmLabel": "发送",
+          "cancelLabel": "取消"
+        }
+      }
+    },
+    {
+      "type": "button",
+      "label": "前往关于页",
+      "emphasis": "secondary",
+      "action": {
+        "type": "navigate",
+        "pageId": "about",
+        "params": {
+          "from": "home"
+        }
+      }
+    },
+    {
+      "type": "list",
+      "items": [
+        {
+          "title": "声明式列表",
+          "subtitle": "首版列表只渲染静态条目",
+          "trailing": "v1"
+        },
+        {
+          "title": "动作绑定",
+          "subtitle": "按钮可触发宿主 action 或页面导航",
+          "trailing": "→"
+        }
+      ]
+    },
+    {
+      "type": "empty",
+      "title": "空态示例",
+      "message": "数据为空时使用统一空态组件。"
+    },
+    {
+      "type": "loading",
+      "text": "加载态示例"
+    }
+  ]
+}

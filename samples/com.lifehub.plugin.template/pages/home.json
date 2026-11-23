@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "pageId": "home",
+  "title": "插件模板",
+  "nodes": [
+    {
+      "type": "title",
+      "text": "你好，插件开发者",
+      "level": 1
+    },
+    {
+      "type": "text",
+      "text": "这个页面完全由 manifest 与页面 schema 描述，宿主使用 Compose 渲染，不执行任意 HTML 或脚本。"
+    },
+    {
+      "type": "section",
+      "title": "试试输入",
+      "children": [
+        {
+          "type": "input",
+          "id": "name",
+          "label": "你的名字",
+          "placeholder": "请输入"
+        },
+        {
+          "type": "input",
+          "id": "date",
+          "label": "日期",
+          "kind": "date"
+        }
+      ]
+    },
+    {
+      "type": "button",
+      "label": "触发宿主动作",
+      "action": {
+        "type": "host",
+        "actionId": "com.lifehub.plugin.template.greet"
+      }
+    },
+    {
+      "type": "list",
+      "items": [
+        {
+          "title": "示例条目",
+          "subtitle": "静态列表由 schema 提供",
+          "trailing": "v1"
+        }
+      ]
+    }
+  ]
+}
