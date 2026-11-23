@@ -12,26 +12,26 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # 宿主构建要求插件仓库与宿主同级；公开仓库可直接用 github.token，
       # 私有仓库需额外配置 LIFEHUB_PLUGIN_REPOS_TOKEN（contents: read）。
       - name: Checkout ledger plugin repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ github.repository_owner }}/lifehub-plugin-ledger
           token: ${{ secrets.LIFEHUB_PLUGIN_REPOS_TOKEN || github.token }}
           path: plugin-src/ledger
 
       - name: Checkout memo plugin repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ github.repository_owner }}/lifehub-plugin-memo
           token: ${{ secrets.LIFEHUB_PLUGIN_REPOS_TOKEN || github.token }}
           path: plugin-src/memo
 
       - name: Checkout travel plugin repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: ${{ github.repository_owner }}/lifehub-plugin-travel
           token: ${{ secrets.LIFEHUB_PLUGIN_REPOS_TOKEN || github.token }}
@@ -44,12 +44,12 @@ jobs:
           mv plugin-src/travel ../lifehub-plugin-travel
           rmdir plugin-src
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "17"
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Make wrapper executable
         run: chmod +x gradlew
@@ -97,7 +97,7 @@ jobs:
           } > build-info.txt
           cat build-info.txt
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: lifehub-release
           path: |
