@@ -89,7 +89,19 @@ JSON 序列化使用 `plugin-api` 中的 `PluginActionRequest`、`PluginActionRe
 - 卸载 APK 后宿主正常启动并显示“任务清单 · 未安装”；重装后重新发现。
 - 卸载会由 Android 删除插件数据库，数据需通过备份恢复。
 
-## 8. 旅迹是否适合 APK
+## 8. 应用内安装与索引（1.1.0）
+
+插件市场从签名索引读取 APK 条目，安装流程：
+
+1. 索引条目包含 `applicationId`、`versionCode`、`sha256`、`signerSha256` 与下载地址；索引本身由 `registry.sig` 签名。
+2. 宿主通过 HTTPS 下载 APK，边写边计算 SHA-256；不匹配立即删除。
+3. `PackageManager.getPackageArchiveInfo` 校验包名、`versionName`、`versionCode` 与证书 SHA-256；与已安装版本签名者不一致或 `versionCode` 降级时拒绝。
+4. 使用 `PackageInstaller` 创建会话并交给系统确认界面；需要 `REQUEST_INSTALL_PACKAGES`，用户未授权“安装未知应用”时引导到系统设置。
+5. 安装成功后刷新 APK 发现与插件注册表；失败状态通过广播回传市场界面。
+
+索引只用于发现，不作为信任根；包内签名、SHA-256、签名者连续性与版本策略仍由宿主校验。索引格式见 [插件索引 v1](plugin-index-v1.md)。
+
+## 9. 旅迹是否适合 APK
 
 暂不迁移。旅迹页面包含全国/省/市/区县地图与高分辨率 PNG 导出：
 
@@ -99,7 +111,7 @@ JSON 序列化使用 `plugin-api` 中的 `PluginActionRequest`、`PluginActionRe
 
 结论：旅迹继续内置；APK 插件优先承载数据型、小页面插件。
 
-## 9. 后续
+## 10. 后续
 
 - provider 契约版本协商与能力声明。
 - 签名证书固定、调用方白名单与安装来源提示。

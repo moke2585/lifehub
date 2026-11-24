@@ -1,6 +1,6 @@
 # 隐私、数据与能力说明
 
-LifeHub 是本地优先的生活工具聚合应用。首版不接入账号、云同步、广告或第三方统计 SDK，也不申请网络权限。
+LifeHub 是本地优先的生活工具聚合应用。1.0.0 不接入账号、云同步、广告或第三方统计 SDK，也不申请网络权限；1.1.0 起新增插件市场，仅申请网络权限用于拉取静态索引与下载用户主动选择的插件产物。
 
 ## 1. 本地保存的数据
 
@@ -49,9 +49,15 @@ LifeHub 是本地优先的生活工具聚合应用。首版不接入账号、云
 
 ## 6. 网络与第三方
 
-- 首版 `AndroidManifest.xml` 未声明 `INTERNET` 权限。
-- 未集成广告、统计、推送、账号或云服务 SDK。
-- 插件均随 APK 内置，不从网络下载或执行第三方代码。
+- 1.0.0：`AndroidManifest.xml` 未声明 `INTERNET`，插件均随 APK 内置。
+- 1.1.0：新增插件市场，声明 `INTERNET` 与 `REQUEST_INSTALL_PACKAGES`。
+  - `INTERNET` 只用于拉取静态索引 `https://raw.githubusercontent.com/moke2585/lifehub-plugin-index/main/registry.json`、`registry.sig`，以及下载用户在市场中主动选择的 GitHub Release 产物。
+  - 请求只携带标准 HTTP 头（`User-Agent`、条件请求 `ETag`/`Last-Modified`），不包含账号、设备标识、插件数据或用户输入。
+  - 索引与产物会先校验 SHA-256、签名者与索引签名；校验失败不会安装。
+  - `REQUEST_INSTALL_PACKAGES` 只用于把已校验的 APK 交给系统 `PackageInstaller`；最终安装仍需用户在系统界面确认，可在系统设置中撤销“安装未知应用”。
+  - 市场只访问固定索引地址与 Release 下载地址，不集成广告、统计、推送、账号或云服务 SDK。
+- 已安装插件始终本地发现；断网或索引损坏时使用缓存或内置快照，不影响已安装插件运行。
+- APK 插件的数据由插件自己保存在独立数据库；宿主备份通过 provider 的 `exportBackup`/`importBackup` 读取，卸载插件 APK 会删除其数据库。
 - 用户主动选择“导出高清地图”时，图片会写入系统相册的 `Pictures/LifeHub` 目录（Android 10+ 通过 MediaStore，无需存储权限；旧系统写入应用专属图片目录），不经过任何网络。
 - 旅迹的省/市/区县边界在构建前离线预处理并随 APK 内置，运行时不访问 DataV、OpenStreetMap 或任何网络服务；没有区县的直筒子市与省直辖县级单位使用 OpenStreetMap 的乡镇街道边界（© OpenStreetMap contributors，ODbL）。
 - 旅迹从 v1/v2 升级到 v3 时，旧备注只在本地转为评论、v2 随评评分聚合为地区评分，不上传、不合并到任何外部服务。

@@ -23,8 +23,10 @@ val hasReleaseSigning = listOf(
     releaseKeyPassword,
 ).all { !it.isNullOrBlank() }
 
-val appVersionCode = 1
-val appVersionName = "1.0.0"
+val appVersionCode = 2
+val appVersionName = "1.1.0"
+val pluginIndexBaseUrl = providers.gradleProperty("lifehub.indexBaseUrl")
+    .getOrElse("https://raw.githubusercontent.com/moke2585/lifehub-plugin-index/main")
 val requireReleaseSigning = providers.gradleProperty("lifehubRequireReleaseSigning")
     .map { it.toBoolean() }
     .orElse(false)
@@ -39,6 +41,12 @@ android {
         targetSdk = 36
         versionCode = appVersionCode
         versionName = appVersionName
+        buildConfigField("String", "PLUGIN_INDEX_URL", "\"$pluginIndexBaseUrl/registry.json\"")
+        buildConfigField(
+            "String",
+            "PLUGIN_INDEX_SIGNATURE_URL",
+            "\"$pluginIndexBaseUrl/registry.sig\"",
+        )
     }
 
     signingConfigs {

@@ -208,3 +208,14 @@ APK 插件不得在宿主进程内加载 dex/so；页面 schema 与能力声明�
 - [ ] `dataSchemaVersion` 变更提供迁移与回滚测试。
 - [ ] 备份/恢复、禁用/卸载/重装路径验证通过。
 - [ ] 不记录数据正文、金额、任务内容或备份口令。
+
+## 14. 插件上架与索引
+
+插件市场从 [lifehub-plugin-index](https://github.com/moke2585/lifehub-plugin-index) 的 `registry.json` 发现版本。第三方插件必须通过索引仓库的 PR 审核，合并后由受保护工作流签名 `registry.json`；App 内置索引公钥，验签失败会回退缓存。
+
+- `.lhplugin` 条目：`artifactType=lhplugin`，`signerSha256` 为签名公钥 DER 的 SHA-256。
+- APK 条目：`artifactType=apk`，必须提供 `applicationId`、`versionCode`，并与 APK 内的证书指纹一致。
+- 每个 `pluginId` 只保留一条最新版本；版本与 `versionCode` 必须单调递增，签名者必须连续。
+- 索引只作发现，宿主安装前仍会校验包结构、SHA-256、签名者与版本策略。
+
+字段、签名载荷与发布流程见 [插件索引 v1](plugin-index-v1.md)。

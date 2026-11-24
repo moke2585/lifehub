@@ -1,7 +1,7 @@
 # LifeHub 插件市场与安装形态实施计划
 
-- 状态：已批准，阶段 A/B/C/D 已完成，阶段 E 待开始
-- 日期：2026-11-23
+- 状态：已批准，阶段 A/B/C/D/E 已完成（E 的发布流水线需配置 Secrets 后启用），阶段 F 待开始
+- 日期：2026-11-24
 - 目标版本：后续版本（不进入当前首版范围）
 - 关联文档：[ADR-0001](decisions/0001-plugin-form.md)、[ADR-0002](decisions/0002-distribution-and-compliance.md)、[ADR-0005](decisions/0005-signing-upgrade-and-failure.md)、[备份格式 v1](backup-format.md)、[插件开发指南](plugin-development.md)
 
@@ -33,7 +33,7 @@
 | D4 | APK PoC 选型 | 任务清单（数据量小、CRUD 清晰） |
 | D5 | APK 数据归属 | 插件自有数据库，提供 `exportBackup/importBackup` |
 | D6 | 备份兼容 | 冻结 v1 读取器；插件 ID、集合名、`dataSchemaVersion` 保持稳定 |
-| D7 | 注册表托管 | `lifehub-plugins` 仓库 + 静态 `registry.json`，App 缓存，不依赖 GitHub API |
+| D7 | 注册表托管 | `lifehub-plugin-index` 仓库 + 静态 `registry.json`，App 缓存，不依赖 GitHub API |
 | D8 | 包可见性 | 自定义 intent action + `<queries>`，避免 `QUERY_ALL_PACKAGES` |
 
 ## 4. 当前基线
@@ -71,7 +71,7 @@
 ```text
 GitHub 插件仓库 ──Release──► .lhplugin / APK
         │                         │
-        └──CI 更新──► lifehub-plugins/registry.json
+        └──CI 更新──► lifehub-plugin-index/registry.json
                                   │
                                   ▼
                          LifeHub 插件市场（缓存 + 离线）
@@ -155,30 +155,35 @@ com.example.water/
 
 ### 5.4 注册表
 
-`lifehub-plugins` 仓库维护静态索引：
+`lifehub-plugin-index` 仓库维护静态索引：
 
 ```json
 {
   "schema": 1,
+  "generatedAt": "2026-11-24T00:00:00Z",
   "plugins": [{
     "pluginId": "com.lifehub.plugin.memo",
     "name": "任务清单",
-    "version": "1.2.0",
+    "version": "1.1.0",
     "artifactType": "apk",
-    "url": "https://github.com/.../releases/download/v1.2.0/memo.apk",
+    "applicationId": "com.lifehub.plugin.memo",
+    "versionCode": 1,
+    "url": "https://github.com/.../releases/download/v1.1.0/memo-apk-release.apk",
     "sha256": "...",
     "signerSha256": "...",
     "minHostVersion": 1,
     "pluginSdkVersion": 1,
     "capabilities": ["ui.action", "storage.private"],
-    "repo": "https://github.com/..."
+    "repo": "https://github.com/...",
+    "sizeBytes": 970273
   }]
 }
 ```
 
-- App 内置一份索引快照，联网时按 ETag 更新。
+- App 内置一份索引快照，联网时按 ETag/Last-Modified 更新；缓存与网络索引必须通过 `registry.sig` 验签。
 - 已安装插件始终本地发现，不依赖网络。
-- 每个插件仓库 CI 构建产物、计算 SHA-256、上传 Release，并更新索引仓库。
+- 任务清单插件仓库 CI 构建 APK、签名、上传 Release 与 `plugin-release.json`；索引仓库扫描最新 Release 并开 PR，人工合并后由受保护工作流签名。
+- 记账与旅迹依赖 Kotlin action handler，继续内置分发，不进入索引。
 
 ## 6. 分阶段实施
 
@@ -255,11 +260,12 @@ com.example.water/
 
 任务：
 
-- [ ] 建立 `lifehub-plugins` 索引仓库与 `registry.json` schema。
-- [ ] 每个插件仓库 CI：构建、签名、SHA-256、Release、更新索引。
-- [ ] App 插件市场：列表、详情、版本、能力、安装/更新、离线标识。
-- [ ] 索引缓存、ETag、内置快照、失败降级。
-- [ ] 安装前展示签名者、能力与来源。
+- [x] 建立 `lifehub-plugin-index` 索引仓库与 `registry.json` schema（含 `applicationId/versionCode/sizeBytes` 与 `registry.sig`）。
+- [x] 任务清单插件仓库 CI：构建、签名、SHA-256/证书指纹、Release 与 `plugin-release.json` 元数据。
+- [x] App 插件市场：列表、详情、版本、能力、安装/更新、离线标识。
+- [x] 索引缓存、ETag/Last-Modified、内置快照、验签失败回退。
+- [x] 安装前展示签名者、能力与来源。
+- [x] 索引仓库扫描 Release 生成 PR，合并后由受保护工作流签名。
 
 验收：
 
@@ -341,7 +347,7 @@ com.example.water/
 - [x] D4：确认 APK PoC 选任务清单。
 - [x] D5：确认 APK 插件自有存储 + 备份导入桥。
 - [x] D6：确认备份 v1 冻结与 golden fixture 方案。
-- [x] D7：确认 `lifehub-plugins` 静态索引仓库。
+- [x] D7：确认 `lifehub-plugin-index` 静态索引仓库。
 - [x] D8：确认自定义 intent + `<queries>` 的发现方式。
 
 ## 11. 实施记录（阶段 A/B，2026-11-23）
@@ -383,7 +389,20 @@ com.example.water/
 - Binder：version 冷启动 238 ms，manifest 13 ms，page 2 ms，data 1–62 ms，action 2–11 ms，export 7–25 ms，import 15 ms；负载 0.1–5.1 KiB。
 - 旅迹评估：地图资产与高清 PNG 可能超过 512 KiB，暂不 APK 化，继续内置。
 
-## 14. 完成定义
+## 14. 实施记录（阶段 E，2026-11-24）
+
+- 索引：建立 `lifehub-plugin-index`，`registry.json` schema 1 增加 `applicationId/versionCode/sizeBytes`；`registry.sig` 使用 ECDSA P-256 对 `lifehub-index-v1\n<sha256>` 签名，公钥内置 App。
+- 宿主：新增 `market` 包，含 HTTPS 索引客户端、ETag/Last-Modified 缓存、内置快照回退、索引验签、市场列表/详情、ZIP 与 APK 安装器。
+- 权限：新增 `INTERNET` 与 `REQUEST_INSTALL_PACKAGES`；版本升至 1.1.0（versionCode 2）；隐私说明与发布检查表已更新。
+- ZIP：下载 → SHA-256 → `PluginZipImporter` 结构/页面/签名校验 → 确认 → 原子安装；版本降级与签名者变化仍由 importer 拒绝。
+- APK：下载 → SHA-256 → `getPackageArchiveInfo` 校验包名/版本/证书指纹 → `PackageInstaller` 系统确认 → 返回应用刷新发现；未知来源权限缺失时引导到系统设置。
+- CI：memo 仓库新增独立 Release 工作流（检出宿主与 ledger/travel，构建签名 APK，上传 APK、`.sha256` 与 `plugin-release.json`）；索引仓库新增 `scan.yml`（扫描 Release 并开 PR）与 `sign.yml`（Environment `index-signing` 审批后签名）。
+- 审核：索引只接受 PR 合并后的签名版本；自动扫描不自动合并；签名密钥与公钥分离，轮换需先发新版 App。
+- 测试：app 119、ledger 35、memo 27、travel 12、plugin-api 49、plugin-runtime 30、dev-harness 10，合计 282 项通过；`validatePlugins` 5 包 OK；模块边界与 lint 通过；索引 `validate.py` 通过。
+- 构建：宿主 Debug APK 15,382,882 字节，SHA-256 `F82CFC050321F6A28F6577887A2460E4064EB0C67724ED86BB3B7C9FD9A89950`；任务清单插件 Debug APK 1,425,642 字节，SHA-256 `E50A396F4D736B25BE971EBB55D5AF7EB0B5158AE7817161C8F247A204715014`。
+- 待启用：memo 仓库配置签名 Secrets、索引仓库配置 `index-signing` Environment 与签名 Secrets 后，推送 `v1.1.0` 标签即可完成首次上架与真机安装回归。
+
+## 15. 完成定义
 
 - 用户可在飞行模式下安装一个 ZIP 插件和一个 APK 插件。
 - 两者的页面都由宿主渲染，风格与现有三个插件一致。

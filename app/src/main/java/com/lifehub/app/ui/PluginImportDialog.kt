@@ -86,7 +86,7 @@ private fun ImportProgressDialog(title: String) {
 }
 
 @Composable
-private fun ImportPreviewDialog(
+internal fun ImportPreviewDialog(
     preview: PluginImportPreview,
     onConfirm: () -> Unit,
     onCancel: () -> Unit,

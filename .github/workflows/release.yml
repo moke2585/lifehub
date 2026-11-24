@@ -68,32 +68,28 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/lifehub-release.keystore"
           test -s "$RUNNER_TEMP/lifehub-release.keystore"
 
-      - name: Build signed release APKs
+      - name: Build signed release APK
         env:
           LIFEHUB_RELEASE_STORE_FILE: ${{ runner.temp }}/lifehub-release.keystore
           LIFEHUB_RELEASE_STORE_PASSWORD: ${{ secrets.LIFEHUB_RELEASE_STORE_PASSWORD }}
           LIFEHUB_RELEASE_KEY_ALIAS: ${{ secrets.LIFEHUB_RELEASE_KEY_ALIAS }}
           LIFEHUB_RELEASE_KEY_PASSWORD: ${{ secrets.LIFEHUB_RELEASE_KEY_PASSWORD }}
-        run: ./gradlew :app:checkReleasePrerequisites -PlifehubRequireReleaseSigning=true :app:assembleRelease :plugins:memo-apk:assembleRelease --stacktrace
+        run: ./gradlew :app:checkReleasePrerequisites -PlifehubRequireReleaseSigning=true :app:assembleRelease --stacktrace
 
-      - name: Verify APK signatures
+      - name: Verify APK signature
         run: |
           APKSIGNER=$(find "${ANDROID_HOME}/build-tools" -type f -name apksigner | sort -V | tail -n 1)
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --print-certs app/build/outputs/apk/release/app-release.apk
-          "$APKSIGNER" verify --print-certs ../lifehub-plugin-memo/apk/build/outputs/apk/release/memo-apk-release.apk
 
       - name: Write checksums and build info
         run: |
-          cp ../lifehub-plugin-memo/apk/build/outputs/apk/release/memo-apk-release.apk .
           sha256sum app/build/outputs/apk/release/app-release.apk > app-release.sha256
-          sha256sum memo-apk-release.apk > memo-apk-release.sha256
           {
             echo "commit=$(git rev-parse HEAD)"
             echo "java=$(java -version 2>&1 | head -n 1)"
             echo "gradle=$(grep distributionUrl gradle/wrapper/gradle-wrapper.properties | cut -d'=' -f2)"
             echo "apk_sha256=$(cut -d' ' -f1 app-release.sha256)"
-            echo "memo_apk_sha256=$(cut -d' ' -f1 memo-apk-release.sha256)"
           } > build-info.txt
           cat build-info.txt
 
@@ -103,6 +99,4 @@ jobs:
           path: |
             app/build/outputs/apk/release/app-release.apk
             app-release.sha256
-            memo-apk-release.apk
-            memo-apk-release.sha256
             build-info.txt

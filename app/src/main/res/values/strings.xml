@@ -191,4 +191,47 @@
     <string name="plugin_disabled_message">请先在插件详情中启用该插件。</string>
 
     <string name="error_back">返回</string>
+
+    <string name="market_title">插件市场</string>
+    <string name="market_open">插件市场</string>
+    <string name="market_back">返回</string>
+    <string name="market_refresh">刷新索引</string>
+    <string name="market_loading">正在读取索引…</string>
+    <string name="market_empty_title">市场里还没有插件</string>
+    <string name="market_empty_message">发布插件并更新索引后，这里会出现可安装的版本。</string>
+    <string name="market_status_bundled">内置索引 · 尚未联网更新</string>
+    <string name="market_status_offline">离线 · 显示上次有效索引</string>
+    <string name="market_status_cache">缓存索引</string>
+    <string name="market_status_updated">索引已更新</string>
+    <string name="market_updated_at">更新于 %1$s</string>
+    <string name="market_error">索引刷新失败：%1$s</string>
+    <string name="market_install">安装</string>
+    <string name="market_update">更新</string>
+    <string name="market_up_to_date">已是最新</string>
+    <string name="market_index_older">索引版本较低</string>
+    <string name="market_signer_mismatch">签名不一致</string>
+    <string name="market_conflict">来源冲突</string>
+    <string name="market_not_installed">未安装</string>
+    <string name="market_installed_version">已安装 %1$s</string>
+    <string name="market_version">v%1$s</string>
+    <string name="market_artifact_apk">APK 插件</string>
+    <string name="market_artifact_zip">声明式插件</string>
+    <string name="market_detail_capabilities">能力</string>
+    <string name="market_detail_signer">签名者</string>
+    <string name="market_detail_repo">源码仓库</string>
+    <string name="market_detail_source">下载来源</string>
+    <string name="market_detail_application_id">包名</string>
+    <string name="market_detail_size">大小</string>
+    <string name="market_working_downloading">正在下载并校验…</string>
+    <string name="market_working_installing">正在安装…</string>
+    <string name="market_apk_confirm_title">安装 APK 插件</string>
+    <string name="market_apk_confirm_message">即将安装 %1$s %2$s。这是独立代码插件，安装后由 Android 沙箱隔离；请确认签名者与来源。</string>
+    <string name="market_apk_confirm_install">打开系统安装器</string>
+    <string name="market_permission_title">需要允许安装未知应用</string>
+    <string name="market_permission_message">系统要求允许 LifeHub 安装插件 APK。完成授权并返回后会自动继续。</string>
+    <string name="market_permission_open">去设置</string>
+    <string name="market_permission_later">稍后</string>
+    <string name="market_done">完成</string>
+    <string name="market_failed_title">市场操作失败</string>
+    <string name="market_cancel">取消</string>
 </resources>

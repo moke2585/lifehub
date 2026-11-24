@@ -1,16 +1,17 @@
-# 发布检查表 v1.0.0
+# 发布检查表 v1.1.0
 
 ## 1. 版本与兼容性
 
 | 项 | 值 |
 |---|---|
-| 应用版本 | `1.0.0`（versionCode 1） |
+| 应用版本 | `1.1.0`（versionCode 2） |
 | 最低 Android | API 26 |
 | 目标 Android | API 36 |
 | ABI | `arm64-v8a` |
 | 插件 SDK | `1.0.0`（只接受主版本 1） |
 | 页面 schema | v1 |
 | 备份格式 | v1 |
+| 插件索引 | schema v1（签名 `registry.sig`） |
 | 宿主最低版本 | versionCode 1 |
 
 发布前必须确认 `app/build.gradle.kts` 中的 `appVersionCode` 与 `appVersionName`，并保证 versionCode 单调递增。
@@ -23,7 +24,7 @@
 
 预期：
 
-- [x] 全部单元测试通过（2026-11-23：app 110、ledger 35、memo 27、travel 12、plugin-api 49、plugin-runtime 11、dev-harness 10，合计 254）。
+- [x] 全部单元测试通过（2026-11-24：app 119、ledger 35、memo 27、travel 12、plugin-api 49、plugin-runtime 30、dev-harness 10，合计 282）。
 - [x] `:dev-harness:validatePlugins` 输出 `packages=5 ok=5 errors=0 warnings=0`。
 - [x] lint 0 errors（当前存在 4 个既有 warnings，发布前确认没有新增）。
 - [x] Debug APK 可生成。
@@ -31,14 +32,17 @@
 发布构建：
 
 ```powershell
+# 宿主
 .\gradlew.bat :app:checkReleasePrerequisites -PlifehubRequireReleaseSigning=true :app:assembleRelease
-.\gradlew.bat :plugins:memo-apk:assembleRelease
+
+# 任务清单插件：在 lifehub-plugin-memo 推送 v* 标签，由该仓库的 release.yml 构建并发布
 ```
 
-- [x] 签名配置存在且 `checkReleasePrerequisites` 通过（2026-11-23：`Release signing: configured`，`Release prerequisites OK: version 1.0.0 (1), plugins=4`）。
-- [x] `app-release.apk` 生成（10,856,398 字节）。
+- [x] 签名配置存在且 `checkReleasePrerequisites` 通过（2026-11-24：`Release signing: configured`，`Release prerequisites OK: version 1.1.0 (2), plugins=4`）。
+- [x] `app-release.apk` 生成（10,941,405 字节）。
 - [x] `apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk` 通过。
-- [x] 记录 APK SHA-256：`0FF54D4F3256E2EB06D211274BF3E53E8C50F04EC4FA600249F588CC9241F153`。
+- [x] 记录 APK SHA-256：`DD0BC34105D6BB3F92167B98490BC876292E2F55A3A756E467928939282CF3B9`。
+- [x] 1.1.0 权限确认：`INTERNET`、`REQUEST_INSTALL_PACKAGES` 与 AndroidX 动态接收器权限；无 `debuggable` 标记。
 
 本地未签名验证构建（2026-11-22，分类折叠与新建类型、任务图标折叠与滑动阈值）：
 
@@ -50,11 +54,14 @@
 - 插件模块拆分后 Debug APK（2026-11-23）：15,160,945 字节，SHA-256 `93DB5C4897F3EDCCC28E990B51D4C8BA0B462440ABF7EEB03525959F144BF2A7`；构建与自动化测试通过，真机安装待设备重连。
 - `.lhplugin` 离线导入与多仓库拆分后 Debug APK（2026-11-23）：15,218,233 字节，SHA-256 `FD45F14B34149C68D985E1E9A735C1A3EFFC1C179AA460F3A89DBD07597EB054`；250 项单测、5 包校验、lint 与模块边界检查通过，Samsung SM-X610 安装与主页冒烟通过。
 - APK 插件 PoC 后宿主 Debug APK（2026-11-23）：16,030,575 字节，SHA-256 `71FBF0746F56AFEFC7BD78C495BDF412E4739887B3DE0C358087BD6108F923B8`；254 项单测、5 包校验、模块边界与 lint 通过。
+- 插件市场阶段 E 宿主 Debug APK（2026-11-24）：15,382,882 字节，SHA-256 `F82CFC050321F6A28F6577887A2460E4064EB0C67724ED86BB3B7C9FD9A89950`；282 项单测、5 包校验、模块边界与 lint 通过。
+- 插件市场阶段 E 任务清单插件 Debug APK（2026-11-24）：1,425,642 字节，SHA-256 `E50A396F4D736B25BE971EBB55D5AF7EB0B5158AE7817161C8F247A204715014`。
+- 签名 Release APK 1.1.0（2026-11-24）：10,941,405 字节，SHA-256 `DD0BC34105D6BB3F92167B98490BC876292E2F55A3A756E467928939282CF3B9`；`apksigner verify` 通过，证书 SHA-256 指纹 `215D2A649A4175061A2D26300C9D73A4E30E1A6EAD20E7FFDE41F773DB47BCAA`；`aapt2`：versionCode 2、versionName 1.1.0、`arm64-v8a`、`INTERNET` 与 `REQUEST_INSTALL_PACKAGES`。
 - 任务清单插件 APK（2026-11-23）：1,425,526 字节，SHA-256 `548DBF2AD0E7475B221482754A3B14A8C8FE9490095F82FE5247CA804971D481`；已安装到 Samsung SM-X610 完成 provider 发现、页面/action/data 与备份回归。
 - 签名 Release APK（2026-11-23）：10,856,398 字节，SHA-256 `0FF54D4F3256E2EB06D211274BF3E53E8C50F04EC4FA600249F588CC9241F153`；`apksigner verify` 通过，证书 `CN=moke, OU=LifeHub, O=LifeHub`，SHA-256 指纹 `215D2A649A4175061A2D26300C9D73A4E30E1A6EAD20E7FFDE41F773DB47BCAA`。
 - 签名任务清单插件 APK（2026-11-23）：`memo-apk-release.apk` 970,273 字节，SHA-256 `769B08E8616954711F79060182785D0967134C32B536FA4D01F7F1D634264B97`；与宿主共用 `lifehub.release.*` 签名配置，`apksigner verify` 通过且证书指纹一致。
 - 本机签名通过用户级 `~/.gradle/gradle.properties` 的 `lifehub.release.*` 指向本机 keystore；GitHub Secrets 仍待配置后由 `release.yml` 完成 CI 签名。
-- 产物校验（`aapt2 dump badging` / `dump xmltree`）：versionCode 1、versionName 1.0.0、minSdk 26、targetSdk 36、`arm64-v8a`、无 `INTERNET` 权限、`allowBackup=false`、无 `debuggable` 标记。
+- 1.0.0 产物校验（`aapt2 dump badging` / `dump xmltree`）：versionCode 1、versionName 1.0.0、minSdk 26、targetSdk 36、`arm64-v8a`、无 `INTERNET` 权限、`allowBackup=false`、无 `debuggable` 标记。
 
 ## 3. 签名与密钥
 
@@ -66,6 +73,9 @@
 - CI 使用 GitHub Secrets：`LIFEHUB_KEYSTORE_BASE64`、`LIFEHUB_RELEASE_STORE_PASSWORD`、`LIFEHUB_RELEASE_KEY_ALIAS`、`LIFEHUB_RELEASE_KEY_PASSWORD`。
 - `release.yml` 会检出同名的三个插件仓库到宿主同级目录；公开仓库使用默认 token，私有仓库需额外配置 `LIFEHUB_PLUGIN_REPOS_TOKEN`（contents: read）。
 - 插件 APK（`plugins/memo-apk`）复用同一组 `lifehub.release.*` 属性或 `LIFEHUB_RELEASE_*` 环境变量；未配置签名时 release 构建产出未签名包。
+- 索引签名使用独立 ECDSA P-256 密钥：公钥为 `keys/index-2026-11.pem`（索引仓库与 App 内置同一份），私钥只存放在索引仓库 Environment `index-signing` 的 Secret `INDEX_EC_P256_PRIVATE_KEY_B64`，`INDEX_KEY_ID=index-2026-11`。
+- memo 仓库需配置相同的 4 个签名 Secrets；索引仓库需创建 Environment `index-signing`（required reviewers）并配置上述两个索引签名 Secrets。
+- 索引签名载荷、缓存与回退规则见 [插件索引 v1](plugin-index-v1.md)；密钥轮换需先发布内置新公钥的 App。
 - [ ] 私钥离线备份两份，口令与私钥分开保管。
 - [ ] 确认仓库、CI 日志、构建日志和崩溃报告中没有私钥或口令。
 - [x] 记录签名证书 SHA-256 指纹：`215D2A649A4175061A2D26300C9D73A4E30E1A6EAD20E7FFDE41F773DB47BCAA`（SHA-1 `50981DCDF6A015185856AB2FF10903604E8E4976`）。
@@ -73,9 +83,9 @@
 
 ## 4. 隐私与安全核查
 
-- [x] `AndroidManifest.xml` 未声明 `INTERNET` 权限（release APK `aapt dump badging` 已确认）。
+- [x] 1.1.0 仅新增 `INTERNET` 与 `REQUEST_INSTALL_PACKAGES`，用途与访问域名见 [隐私说明](privacy.md#6-网络与第三方)；未集成广告、统计、推送或账号 SDK。
 - [x] `allowBackup=false`，`dataExtractionRules` 排除 root/file/database/sharedpref/external。
-- [x] 发布包不包含调试入口、开发签名或 `android:debuggable="true"`（签名 release 包 `aapt2 dump badging` 无 debuggable 输出，仅 `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` 权限）。
+- [x] 发布包不包含调试入口、开发签名或 `android:debuggable="true"`（签名 release 包 `aapt2 dump badging` 无 debuggable 输出）。
 - [x] 已阅读并更新 [隐私、数据与能力说明](privacy.md)。
 - [x] 能力清单与插件 manifest 一致；新增能力会重新征得用户同意。
 - [x] 日志不包含金额、任务正文、用户输入或备份口令（AppLog 接口与测试约束）。
@@ -113,6 +123,10 @@
 | APK 插件发现与运行 | 通过 | 2026-11-23：任务清单 APK 通过 provider 被宿主发现；页面、action、data 正常；停用/启用路径通过；Binder version 冷启动 238 ms，其余调用 1–62 ms |
 | APK 插件未安装 | 通过 | 2026-11-23：卸载任务清单 APK 后宿主正常启动，首页显示“任务清单 · 未安装”，不阻塞其他插件；重装后重新发现 |
 | APK 插件备份迁移 | 通过 | 2026-11-23：旧备份 1 条进行中 + 6 条回收站任务迁移到 APK SQLite；新备份写入 `externalPayload` 并可覆盖导入，provider 导入 15 ms |
+| 插件市场索引与离线回退 | 单测通过，待真机 | 2026-11-24：200/304/缓存/损坏回退内置、索引签名篡改拒绝、下载哈希不符清理由单测覆盖 |
+| 插件市场 ZIP 安装 | 待真机 | 下载 → SHA-256 → `PluginZipImporter` → 确认 → 原子安装 |
+| 插件市场 APK 安装 | 待真机 | 下载 → SHA-256/包名/版本/证书 → `PackageInstaller` → 返回后刷新发现 |
+| 插件市场签名与降级 | 单测通过，待真机 | 签名者不一致、版本降级、ZIP/APK 来源冲突均拒绝安装 |
 | 可逆操作与撤销 | 通过 | 任务清单左滑删除、快速添加撤销、Snackbar“撤销”均验证；连续滑动删除不再误删或提示“任务不存在” |
 | 任务筛选与搜索 | 通过 | 全部/今天/7 天内/已逾期/日常 chips 空态与切换正常；编辑保存后回到“今天”筛选 |
 | 快速新建与空态 | 通过 | 编辑页标题/金额自动聚焦；列表空态按钮；主页已启用卡片“+”直接进入编辑页 |

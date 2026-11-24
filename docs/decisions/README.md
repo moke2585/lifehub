@@ -15,5 +15,6 @@
 | [ADR-0005](0005-signing-upgrade-and-failure.md) | 插件签名、升级与故障处理 | 已接受 | 2026-11-11 |
 | [ADR-0006](0006-external-plugin-packaging.md) | 外部插件包与安装形态：ZIP + APK 双轨 | 已接受 | 2026-11-23 |
 | [ADR-0007](0007-third-party-distribution.md) | 第三方插件分发与合规边界 | 已接受（待发行负责人复核） | 2026-11-23 |
+| [ADR-0008](0008-market-index-signing.md) | 插件索引审核与签名 | 已接受 | 2026-11-24 |
 
 首版范围冻结见 [scope-freeze.md](scope-freeze.md)。

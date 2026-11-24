@@ -2,9 +2,7 @@ package com.lifehub.app.plugin.apk
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import com.lifehub.pluginapi.PluginActionRequest
 import com.lifehub.pluginapi.PluginActionResult
@@ -22,7 +20,6 @@ import com.lifehub.pluginapi.PluginStatus
 import com.lifehub.app.plugin.PluginPackageSource
 import com.lifehub.app.plugin.PluginPackageTrust
 import java.io.InputStream
-import java.security.MessageDigest
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 
@@ -103,6 +100,8 @@ class ApkPluginPackageSource(
     fun refresh() {
         handles = null
     }
+
+    fun installedHandle(pluginId: String): ApkPluginHandle? = discover()[pluginId]
 
     fun dispatchAction(request: PluginActionRequest): PluginActionResult {
         val handle = discover()[request.pluginId]
@@ -217,7 +216,10 @@ class ApkPluginPackageSource(
                     return@forEach
                 }
 
-                val signer = signerFingerprint(providerInfo.packageName) ?: return@forEach
+                val signer = ApkPackageInspector.signerFingerprint(
+                    packageManager,
+                    providerInfo.packageName,
+                ) ?: return@forEach
                 discovered[manifest.pluginId] = ApkPluginHandle(
                     pluginId = manifest.pluginId,
                     packageName = providerInfo.packageName,
@@ -265,34 +267,12 @@ class ApkPluginPackageSource(
         return getString(PluginApkProtocol.KEY_JSON)
     }
 
-    @Suppress("DEPRECATION")
     private fun packageVersionCode(packageName: String): Long {
         val info = runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                packageManager.getPackageInfo(packageName, 0).longVersionCode
-            } else {
-                packageManager.getPackageInfo(packageName, 0).versionCode.toLong()
-            }
-        }.getOrNull()
-        return info ?: 0L
+            packageManager.getPackageInfo(packageName, 0)
+        }.getOrNull() ?: return 0L
+        return ApkPackageInspector.versionCode(info)
     }
-
-    @Suppress("DEPRECATION")
-    private fun signerFingerprint(packageName: String): String? = runCatching {
-        val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNING_CERTIFICATES)
-        } else {
-            packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNATURES)
-        }
-        val certificate = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            packageInfo.signingInfo?.apkContentsSigners?.firstOrNull()
-        } else {
-            packageInfo.signatures?.firstOrNull()
-        } ?: return null
-        MessageDigest.getInstance("SHA-256")
-            .digest(certificate.toByteArray())
-            .joinToString(separator = "") { byte -> "%02x".format(byte) }
-    }.getOrNull()
 
     private companion object {
         const val MANIFEST_FILE = "manifest.json"

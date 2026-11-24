@@ -118,6 +118,7 @@ fun HomeScreen(
     onOpenBackup: () -> Unit,
     onOpenSearch: () -> Unit,
     onImportPlugin: () -> Unit,
+    onOpenMarket: () -> Unit,
     modifier: Modifier = Modifier,
     recentPluginIds: List<String> = emptyList(),
 ) {
@@ -142,6 +143,13 @@ fun HomeScreen(
                         Icon(
                             painter = painterResource(R.drawable.ic_search),
                             contentDescription = stringResource(R.string.home_search),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    IconButton(onClick = onOpenMarket) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_market),
+                            contentDescription = stringResource(R.string.market_open),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
@@ -1322,6 +1330,7 @@ private fun HomeScreenPreview() {
             onOpenBackup = {},
             onOpenSearch = {},
             onImportPlugin = {},
+            onOpenMarket = {},
         )
     }
 }

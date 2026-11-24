@@ -2,6 +2,7 @@ package com.lifehub.app.plugin.zip
 
 import com.lifehub.app.plugin.runtime.archive.PluginArchiveReader
 import com.lifehub.app.plugin.runtime.archive.PluginArchiveResult
+import com.lifehub.app.plugin.runtime.version.PluginVersion
 import com.lifehub.pluginapi.HostInfo
 import com.lifehub.pluginapi.PluginCapability
 import com.lifehub.pluginapi.PluginManifest
@@ -105,7 +106,7 @@ class PluginZipImporter(
             val existing = existingManifest(manifest.pluginId)
             val existingVersion = existing?.version
             if (existingVersion != null &&
-                compareVersions(manifest.version, existingVersion) < 0
+                PluginVersion.compare(manifest.version, existingVersion) < 0
             ) {
                 return fail(
                     "不能降级：已安装 $existingVersion，新包为 ${manifest.version}",
@@ -219,21 +220,6 @@ class PluginZipImporter(
         return runCatching {
             PluginManifestParser.parse(manifestFile.readText(Charsets.UTF_8)).getOrNull()
         }.getOrNull()
-    }
-
-    private fun compareVersions(left: String, right: String): Int {
-        fun parts(value: String): List<Int> =
-            value.substringBefore('-').substringBefore('+')
-                .split('.')
-                .map { it.toIntOrNull() ?: 0 }
-
-        val a = parts(left)
-        val b = parts(right)
-        for (index in 0 until maxOf(a.size, b.size)) {
-            val diff = a.getOrElse(index) { 0 }.compareTo(b.getOrElse(index) { 0 })
-            if (diff != 0) return diff
-        }
-        return 0
     }
 
     private fun writeSafe(root: File, relativePath: String, bytes: ByteArray) {

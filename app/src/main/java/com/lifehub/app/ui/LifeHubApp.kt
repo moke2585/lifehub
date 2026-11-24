@@ -88,7 +88,7 @@ internal const val DEFAULT_SPLIT_RATIO = 0.42f
 internal fun clampSplitRatio(value: Float): Float = value.coerceIn(0.28f, 0.65f)
 
 /** 根导航的当前去向，仅用于转场动画；进入比首页更深，返回则更浅。 */
-private enum class AppRouteKind { Home, Detail, Page, Search, Backup }
+private enum class AppRouteKind { Home, Detail, Page, Search, Backup, Market, MarketDetail }
 
 private data class AppRoute(
     val kind: AppRouteKind,
@@ -103,6 +103,8 @@ private data class AppRoute(
             AppRouteKind.Page -> 2
             AppRouteKind.Search -> 1
             AppRouteKind.Backup -> 1
+            AppRouteKind.Market -> 1
+            AppRouteKind.MarketDetail -> 2
         }
 }
 
@@ -205,6 +207,7 @@ fun LifeHubApp(viewModel: PluginRegistryViewModel = viewModel()) {
             onOpenBackup = {},
             onOpenSearch = {},
             onImportPlugin = launchImport,
+            onOpenMarket = {},
         )
     } else {
         PluginShell(
@@ -379,6 +382,8 @@ private fun PluginRoutes(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var searchScopeId by rememberSaveable { mutableStateOf("") }
     var searchReturn by rememberSaveable { mutableStateOf(false) }
+    var marketOpen by rememberSaveable { mutableStateOf(false) }
+    var marketPluginId by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     val searchPrefs = remember {
         context.getSharedPreferences("lifehub_search", Context.MODE_PRIVATE)
@@ -443,6 +448,8 @@ private fun PluginRoutes(
             searchQuery = ""
             searchScopeId = ""
             searchReturn = false
+            marketOpen = false
+            marketPluginId = null
         }
     }
 
@@ -475,6 +482,8 @@ private fun PluginRoutes(
     }
     val route = when {
         backupOpen -> AppRoute(AppRouteKind.Backup)
+        marketPluginId != null -> AppRoute(AppRouteKind.MarketDetail, marketPluginId)
+        marketOpen -> AppRoute(AppRouteKind.Market)
         searchOpen -> AppRoute(AppRouteKind.Search)
         pageId != null -> AppRoute(AppRouteKind.Page, pageId, pageStartId, pageStartParams)
         selectedId != null -> AppRoute(AppRouteKind.Detail, selectedId)
@@ -494,6 +503,18 @@ private fun PluginRoutes(
                 BackHandler(enabled = backupOpen) { backupOpen = false }
                 BackupScreen(onBack = { backupOpen = false })
             }
+
+            AppRouteKind.Market -> MarketplaceRoute(
+                initialPluginId = null,
+                onOpenDetail = { pluginId -> marketPluginId = pluginId },
+                onBack = { marketOpen = false },
+            )
+
+            AppRouteKind.MarketDetail -> MarketplaceRoute(
+                initialPluginId = target.pluginId,
+                onOpenDetail = { pluginId -> marketPluginId = pluginId },
+                onBack = { marketPluginId = null },
+            )
 
             AppRouteKind.Search -> {
                 GlobalSearchScreen(
@@ -633,6 +654,7 @@ private fun PluginRoutes(
                 onOpenBackup = { backupOpen = true },
                 onOpenSearch = { searchOpen = true },
                 onImportPlugin = onImportPlugin,
+                onOpenMarket = { marketOpen = true },
                 recentPluginIds = recentPluginIds,
             )
         }

@@ -9,6 +9,12 @@ import com.lifehub.app.capability.SharedPreferencesCapabilityGrantStore
 import com.lifehub.app.core.AppLog
 import com.lifehub.app.data.PluginStorageFactory
 import com.lifehub.app.data.SqlitePluginStorageFactory
+import com.lifehub.app.market.download.ArtifactDownloader
+import com.lifehub.app.market.index.BundledPluginIndex
+import com.lifehub.app.market.index.HttpIndexClient
+import com.lifehub.app.market.index.PluginIndexCache
+import com.lifehub.app.market.index.PluginIndexRepository
+import com.lifehub.app.market.install.MarketplaceInstaller
 import com.lifehub.app.plugin.AssetPluginPackageSource
 import com.lifehub.app.plugin.CompositePluginPackageSource
 import com.lifehub.app.plugin.PluginActionDispatcher
@@ -63,6 +69,21 @@ class LifeHubApplication : Application() {
         )
     }
 
+    private val bundledPluginIndex: BundledPluginIndex by lazy {
+        BundledPluginIndex(assets)
+    }
+
+    val pluginIndexRepository: PluginIndexRepository by lazy {
+        PluginIndexRepository(
+            client = HttpIndexClient(),
+            cache = PluginIndexCache(File(filesDir, MARKET_INDEX_DIR)),
+            bundledRegistry = bundledPluginIndex::registryBytes,
+            publicKey = bundledPluginIndex::publicKey,
+            indexUrl = BuildConfig.PLUGIN_INDEX_URL,
+            signatureUrl = BuildConfig.PLUGIN_INDEX_SIGNATURE_URL,
+        )
+    }
+
     private val pluginStateStore: SharedPreferencesPluginStateStore by lazy {
         SharedPreferencesPluginStateStore(
             getSharedPreferences(PLUGIN_STATE_PREFERENCES, MODE_PRIVATE),
@@ -94,6 +115,19 @@ class LifeHubApplication : Application() {
             hostInfo = hostInfo,
             signerStore = pluginSignerStore,
             builtInPluginIds = { builtInPluginSource.pluginIds().toSet() },
+        )
+    }
+
+    val artifactDownloader: ArtifactDownloader by lazy {
+        ArtifactDownloader(File(cacheDir, MARKET_DOWNLOAD_DIR))
+    }
+
+    val marketplaceInstaller: MarketplaceInstaller by lazy {
+        MarketplaceInstaller(
+            context = this,
+            downloader = artifactDownloader,
+            zipImporter = pluginZipImporter,
+            apkPluginSource = apkPluginSource,
         )
     }
 
@@ -223,5 +257,7 @@ class LifeHubApplication : Application() {
         const val SIGNER_PREFERENCES = "plugin_signers"
         const val EXTERNAL_PLUGIN_DIR = "plugins"
         const val IMPORT_DIR = "plugin_import"
+        const val MARKET_INDEX_DIR = "market_index"
+        const val MARKET_DOWNLOAD_DIR = "market_downloads"
     }
 }
