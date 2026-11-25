@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
+import android.os.Build
 import java.io.IOException
 
 /** 通过系统 PackageInstaller 安装已校验的 APK。 */
@@ -30,11 +31,19 @@ class ApkInstallSession(private val context: Context) {
                     action = ApkInstallReceiver.ACTION_INSTALL_STATUS
                     putExtra(ApkInstallReceiver.EXTRA_PACKAGE_NAME, verified.applicationId)
                 }
+                // PackageInstaller 会向状态 Intent 写入 extras，因此必须使用 mutable PendingIntent；
+                // 目标 receiver 是显式且 exported=false，mutable 不会暴露给其他应用。
+                val pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT or
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        PendingIntent.FLAG_MUTABLE
+                    } else {
+                        0
+                    }
                 val pendingIntent = PendingIntent.getBroadcast(
                     context,
                     sessionId,
                     intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                    pendingFlags,
                 )
                 session.commit(pendingIntent.intentSender)
                 committed = true

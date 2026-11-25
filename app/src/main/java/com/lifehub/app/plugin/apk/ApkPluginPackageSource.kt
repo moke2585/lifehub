@@ -231,7 +231,8 @@ class ApkPluginPackageSource(
                     .putString("$SEEN_NAME_PREFIX${manifest.pluginId}", manifest.name)
                     .apply()
             }
-            handles = discovered
+            // 空的发现结果不缓存：插件进程可能刚被系统冻结，下一次调用重试。
+            handles = discovered.takeIf { it.isNotEmpty() }
             return discovered
         }
     }

@@ -399,8 +399,9 @@ com.example.water/
 - CI：memo 仓库新增独立 Release 工作流（检出宿主与 ledger/travel，构建签名 APK，上传 APK、`.sha256` 与 `plugin-release.json`）；索引仓库新增 `scan.yml`（扫描 Release 并开 PR）与 `sign.yml`（Environment `index-signing` 审批后签名）。
 - 审核：索引只接受 PR 合并后的签名版本；自动扫描不自动合并；签名密钥与公钥分离，轮换需先发新版 App。
 - 测试：app 119、ledger 35、memo 27、travel 12、plugin-api 49、plugin-runtime 30、dev-harness 10，合计 282 项通过；`validatePlugins` 5 包 OK；模块边界与 lint 通过；索引 `validate.py` 通过。
-- 构建：宿主 Debug APK 15,382,882 字节，SHA-256 `F82CFC050321F6A28F6577887A2460E4064EB0C67724ED86BB3B7C9FD9A89950`；任务清单插件 Debug APK 1,425,642 字节，SHA-256 `E50A396F4D736B25BE971EBB55D5AF7EB0B5158AE7817161C8F247A204715014`。
-- 待启用：memo 仓库配置签名 Secrets、索引仓库配置 `index-signing` Environment 与签名 Secrets 后，推送 `v1.1.0` 标签即可完成首次上架与真机安装回归。
+- 构建：宿主 Debug APK 15,911,602 字节，SHA-256 `EE92552A2EE3C1231C69DBA3D6B993AD006DF81B6667F16FED22DF43A63CE97F`；签名 Release APK 10,941,405 字节，SHA-256 `631C39110C0F7C79955C11C4EDBD3F88F42510143993917188AB5B2688F0A481`；任务清单插件 Debug APK 1,425,642 字节，SHA-256 `E50A396F4D736B25BE971EBB55D5AF7EB0B5158AE7817161C8F247A204715014`。
+- 2026-11-25 真机回归（Samsung SM-X610，Android 16）：签名索引线上验证通过；市场显示任务清单；debug 签名插件被“签名不一致”拦截；卸载后通过市场下载并安装 release APK 成功，正式版页面/action/data 正常（新增测试任务 `APKtest`）；备份导入完成（任务清单 0 条，旧备份口令不可用）。
+- 真机回归修复：`PackageInstaller` 状态接收器改为 mutable `PendingIntent`；APK 发现空结果不再永久缓存；未安装时不再显示旧“已安装”版本；市场恢复时重新发现插件。
 
 ## 15. 完成定义
 

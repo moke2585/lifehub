@@ -84,6 +84,8 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
 
     /** 从系统安装器或权限设置返回时调用。 */
     fun onResume() {
+        app.apkPluginSource.refresh()
+        rebuildEntries()
         val pending = pendingPermissionApk
         if (pending != null && installer.canRequestPackageInstalls()) {
             _state.update { it.copy(operation = MarketOperation.ApkConfirm(pending)) }
@@ -291,7 +293,7 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
             ?: return MarketEntry(
                 plugin = plugin,
                 status = MarketStatus.NOT_INSTALLED,
-                installedVersion = descriptor?.manifest?.version,
+                installedVersion = null,
             )
         val installedVersion = descriptor?.manifest?.version
         val indexVersionCode = plugin.versionCode

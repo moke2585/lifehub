@@ -41,7 +41,7 @@
 - [x] 签名配置存在且 `checkReleasePrerequisites` 通过（2026-11-24：`Release signing: configured`，`Release prerequisites OK: version 1.1.0 (2), plugins=4`）。
 - [x] `app-release.apk` 生成（10,941,405 字节）。
 - [x] `apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk` 通过。
-- [x] 记录 APK SHA-256：`DD0BC34105D6BB3F92167B98490BC876292E2F55A3A756E467928939282CF3B9`。
+- [x] 记录 APK SHA-256：`631C39110C0F7C79955C11C4EDBD3F88F42510143993917188AB5B2688F0A481`。
 - [x] 1.1.0 权限确认：`INTERNET`、`REQUEST_INSTALL_PACKAGES` 与 AndroidX 动态接收器权限；无 `debuggable` 标记。
 
 本地未签名验证构建（2026-11-22，分类折叠与新建类型、任务图标折叠与滑动阈值）：
@@ -54,9 +54,9 @@
 - 插件模块拆分后 Debug APK（2026-11-23）：15,160,945 字节，SHA-256 `93DB5C4897F3EDCCC28E990B51D4C8BA0B462440ABF7EEB03525959F144BF2A7`；构建与自动化测试通过，真机安装待设备重连。
 - `.lhplugin` 离线导入与多仓库拆分后 Debug APK（2026-11-23）：15,218,233 字节，SHA-256 `FD45F14B34149C68D985E1E9A735C1A3EFFC1C179AA460F3A89DBD07597EB054`；250 项单测、5 包校验、lint 与模块边界检查通过，Samsung SM-X610 安装与主页冒烟通过。
 - APK 插件 PoC 后宿主 Debug APK（2026-11-23）：16,030,575 字节，SHA-256 `71FBF0746F56AFEFC7BD78C495BDF412E4739887B3DE0C358087BD6108F923B8`；254 项单测、5 包校验、模块边界与 lint 通过。
-- 插件市场阶段 E 宿主 Debug APK（2026-11-24）：15,382,882 字节，SHA-256 `F82CFC050321F6A28F6577887A2460E4064EB0C67724ED86BB3B7C9FD9A89950`；282 项单测、5 包校验、模块边界与 lint 通过。
+- 插件市场阶段 E 宿主 Debug APK（2026-11-25，含安装器修复）：15,911,602 字节，SHA-256 `EE92552A2EE3C1231C69DBA3D6B993AD006DF81B6667F16FED22DF43A63CE97F`。
 - 插件市场阶段 E 任务清单插件 Debug APK（2026-11-24）：1,425,642 字节，SHA-256 `E50A396F4D736B25BE971EBB55D5AF7EB0B5158AE7817161C8F247A204715014`。
-- 签名 Release APK 1.1.0（2026-11-24）：10,941,405 字节，SHA-256 `DD0BC34105D6BB3F92167B98490BC876292E2F55A3A756E467928939282CF3B9`；`apksigner verify` 通过，证书 SHA-256 指纹 `215D2A649A4175061A2D26300C9D73A4E30E1A6EAD20E7FFDE41F773DB47BCAA`；`aapt2`：versionCode 2、versionName 1.1.0、`arm64-v8a`、`INTERNET` 与 `REQUEST_INSTALL_PACKAGES`。
+- 签名 Release APK 1.1.0（2026-11-25，含安装器修复）：10,941,405 字节，SHA-256 `631C39110C0F7C79955C11C4EDBD3F88F42510143993917188AB5B2688F0A481`；`apksigner verify` 通过，证书 SHA-256 指纹 `215D2A649A4175061A2D26300C9D73A4E30E1A6EAD20E7FFDE41F773DB47BCAA`；`aapt2`：versionCode 2、versionName 1.1.0、`arm64-v8a`、`INTERNET` 与 `REQUEST_INSTALL_PACKAGES`。
 - 任务清单插件 APK（2026-11-23）：1,425,526 字节，SHA-256 `548DBF2AD0E7475B221482754A3B14A8C8FE9490095F82FE5247CA804971D481`；已安装到 Samsung SM-X610 完成 provider 发现、页面/action/data 与备份回归。
 - 签名 Release APK（2026-11-23）：10,856,398 字节，SHA-256 `0FF54D4F3256E2EB06D211274BF3E53E8C50F04EC4FA600249F588CC9241F153`；`apksigner verify` 通过，证书 `CN=moke, OU=LifeHub, O=LifeHub`，SHA-256 指纹 `215D2A649A4175061A2D26300C9D73A4E30E1A6EAD20E7FFDE41F773DB47BCAA`。
 - 签名任务清单插件 APK（2026-11-23）：`memo-apk-release.apk` 970,273 字节，SHA-256 `769B08E8616954711F79060182785D0967134C32B536FA4D01F7F1D634264B97`；与宿主共用 `lifehub.release.*` 签名配置，`apksigner verify` 通过且证书指纹一致。
@@ -123,10 +123,13 @@
 | APK 插件发现与运行 | 通过 | 2026-11-23：任务清单 APK 通过 provider 被宿主发现；页面、action、data 正常；停用/启用路径通过；Binder version 冷启动 238 ms，其余调用 1–62 ms |
 | APK 插件未安装 | 通过 | 2026-11-23：卸载任务清单 APK 后宿主正常启动，首页显示“任务清单 · 未安装”，不阻塞其他插件；重装后重新发现 |
 | APK 插件备份迁移 | 通过 | 2026-11-23：旧备份 1 条进行中 + 6 条回收站任务迁移到 APK SQLite；新备份写入 `externalPayload` 并可覆盖导入，provider 导入 15 ms |
-| 插件市场索引与离线回退 | 单测通过，待真机 | 2026-11-24：200/304/缓存/损坏回退内置、索引签名篡改拒绝、下载哈希不符清理由单测覆盖 |
-| 插件市场 ZIP 安装 | 待真机 | 下载 → SHA-256 → `PluginZipImporter` → 确认 → 原子安装 |
-| 插件市场 APK 安装 | 待真机 | 下载 → SHA-256/包名/版本/证书 → `PackageInstaller` → 返回后刷新发现 |
-| 插件市场签名与降级 | 单测通过，待真机 | 签名者不一致、版本降级、ZIP/APK 来源冲突均拒绝安装 |
+| 插件市场索引与离线回退 | 通过 | 2026-11-25：真机代理环境拉取签名索引；404 时回退内置索引并显示错误；索引恢复后刷新显示“索引已更新” |
+| 插件市场 APK 安装 | 通过 | 2026-11-25：Samsung SM-X610；卸载 debug 插件后市场下载 980,749 字节 APK，未知来源授权，`PackageInstaller` 确认安装成功；正式版页面、action、data 正常（新增测试任务 `APKtest`） |
+| 插件市场签名拦截 | 通过 | 2026-11-25：debug 签名插件与索引签名不一致时显示“签名不一致”并禁用安装；卸载后签名匹配 |
+| 插件市场 ZIP 安装 | 待真机 | 下载、验签、安装流程由单测覆盖，尚未在真机执行 |
+| 备份恢复（市场安装后） | 部分通过 | 2026-11-25：新备份导入成功；任务清单备份为 0 条（旧备份口令不可用），记账/旅迹数量一致 |
+| 插件市场版本降级 | 待验证 | 目前只发布 1.1.0，versionCode 降级未实测 |
+| 插件市场安装器兼容 | 通过 | 2026-11-25：Android 16 要求 `PackageInstaller` 状态接收器使用 mutable `PendingIntent`；修复后安装成功 |
 | 可逆操作与撤销 | 通过 | 任务清单左滑删除、快速添加撤销、Snackbar“撤销”均验证；连续滑动删除不再误删或提示“任务不存在” |
 | 任务筛选与搜索 | 通过 | 全部/今天/7 天内/已逾期/日常 chips 空态与切换正常；编辑保存后回到“今天”筛选 |
 | 快速新建与空态 | 通过 | 编辑页标题/金额自动聚焦；列表空态按钮；主页已启用卡片“+”直接进入编辑页 |

@@ -96,7 +96,7 @@ JSON 序列化使用 `plugin-api` 中的 `PluginActionRequest`、`PluginActionRe
 1. 索引条目包含 `applicationId`、`versionCode`、`sha256`、`signerSha256` 与下载地址；索引本身由 `registry.sig` 签名。
 2. 宿主通过 HTTPS 下载 APK，边写边计算 SHA-256；不匹配立即删除。
 3. `PackageManager.getPackageArchiveInfo` 校验包名、`versionName`、`versionCode` 与证书 SHA-256；与已安装版本签名者不一致或 `versionCode` 降级时拒绝。
-4. 使用 `PackageInstaller` 创建会话并交给系统确认界面；需要 `REQUEST_INSTALL_PACKAGES`，用户未授权“安装未知应用”时引导到系统设置。
+4. 使用 `PackageInstaller` 创建会话并交给系统确认界面；需要 `REQUEST_INSTALL_PACKAGES`，用户未授权“安装未知应用”时引导到系统设置。状态接收器的 `PendingIntent` 必须是 mutable（系统会写入 `EXTRA_STATUS`），目标 receiver 保持显式且 `exported=false`。
 5. 安装成功后刷新 APK 发现与插件注册表；失败状态通过广播回传市场界面。
 
 索引只用于发现，不作为信任根；包内签名、SHA-256、签名者连续性与版本策略仍由宿主校验。索引格式见 [插件索引 v1](plugin-index-v1.md)。
