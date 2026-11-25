@@ -29,15 +29,22 @@ import com.lifehub.app.plugin.SharedPreferencesPluginStateStore
 import com.lifehub.app.plugin.SharedPreferencesPluginTabPreferenceStore
 import com.lifehub.app.plugin.ZipPluginPackageSource
 import com.lifehub.app.plugin.apk.ApkPluginPackageSource
+import com.lifehub.app.plugin.apk.LedgerApkMigration
+import com.lifehub.app.plugin.apk.SharedPreferencesMigrationStateStore
 import com.lifehub.app.plugin.zip.PluginZipImporter
 import com.lifehub.app.plugin.zip.SharedPreferencesPluginSignerStore
 import com.lifehub.app.plugins.FirstPartyPluginHandlers
+import com.lifehub.app.plugins.LedgerPlugin
 import com.lifehub.app.plugins.TravelPlugin
 import com.lifehub.pluginapi.HostInfo
 import com.lifehub.pluginapi.PluginApiVersion
 import com.lifehub.pluginapi.PluginLifecycleHandler
 import com.lifehub.pluginapi.PluginPathRules
 import java.io.File
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class LifeHubApplication : Application() {
 
@@ -49,7 +56,10 @@ class LifeHubApplication : Application() {
         )
 
     private val builtInPluginSource: AssetPluginPackageSource by lazy {
-        AssetPluginPackageSource(assets)
+        AssetPluginPackageSource(
+            assets = assets,
+            excludedPluginIds = { ledgerApkMigration.readyPluginIds() },
+        )
     }
 
     private val externalPluginSource: ZipPluginPackageSource by lazy {
@@ -59,6 +69,23 @@ class LifeHubApplication : Application() {
     val apkPluginSource: ApkPluginPackageSource by lazy {
         ApkPluginPackageSource(
             context = this,
+            log = { message -> AppLog.event(AppLog.Category.PLUGIN, message) },
+        )
+    }
+
+    val ledgerApkMigration: LedgerApkMigration by lazy {
+        LedgerApkMigration(
+            state = SharedPreferencesMigrationStateStore(
+                getSharedPreferences(MIGRATION_PREFERENCES, MODE_PRIVATE),
+            ),
+            storageFactory = pluginStorageFactory,
+            installedFirstInstallTime = {
+                apkPluginSource.installedHandle(LedgerPlugin.PLUGIN_ID)?.firstInstallTime
+            },
+            exportPayload = { apkPluginSource.exportBackup(LedgerPlugin.PLUGIN_ID) },
+            importPayload = { payload ->
+                apkPluginSource.importBackup(LedgerPlugin.PLUGIN_ID, payload)
+            },
             log = { message -> AppLog.event(AppLog.Category.PLUGIN, message) },
         )
     }
@@ -114,7 +141,10 @@ class LifeHubApplication : Application() {
             importDir = File(filesDir, IMPORT_DIR),
             hostInfo = hostInfo,
             signerStore = pluginSignerStore,
-            builtInPluginIds = { builtInPluginSource.pluginIds().toSet() },
+            // 内置插件与已安装 APK 插件都保留自己的 ID，ZIP 不能覆盖。
+            builtInPluginIds = {
+                (builtInPluginSource.pluginIds() + apkPluginSource.pluginIds()).toSet()
+            },
         )
     }
 
@@ -244,9 +274,17 @@ class LifeHubApplication : Application() {
         )
     }
 
+    private val migrationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun onCreate() {
         super.onCreate()
         AppLog.event(AppLog.Category.STARTUP, "application_created")
+        migrationScope.launch {
+            ledgerApkMigration.migrateIfNeeded()
+                .onSuccess { outcome ->
+                    if (outcome.changed) pluginRegistry.reload()
+                }
+        }
     }
 
     private companion object {
@@ -255,6 +293,7 @@ class LifeHubApplication : Application() {
         const val TAB_PREFERENCES = "plugin_tabs"
         const val HEALTH_PREFERENCES = "plugin_health"
         const val SIGNER_PREFERENCES = "plugin_signers"
+        const val MIGRATION_PREFERENCES = "plugin_migrations"
         const val EXTERNAL_PLUGIN_DIR = "plugins"
         const val IMPORT_DIR = "plugin_import"
         const val MARKET_INDEX_DIR = "market_index"

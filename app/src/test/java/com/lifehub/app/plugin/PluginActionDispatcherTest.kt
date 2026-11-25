@@ -11,6 +11,7 @@ import com.lifehub.pluginapi.PluginActionRequest
 import com.lifehub.pluginapi.PluginActionResult
 import com.lifehub.pluginapi.PluginCapabilities
 import com.lifehub.pluginapi.PluginDescriptor
+import com.lifehub.pluginapi.PluginSource
 import com.lifehub.pluginapi.PluginStatus
 import com.lifehub.pluginapi.PluginStorage
 import kotlinx.coroutines.Dispatchers
@@ -145,6 +146,41 @@ class PluginActionDispatcherTest {
         assertEquals(PluginActionResult.ShowMessage("你好，小明（第 1 次问候）"), first)
         assertEquals(PluginActionResult.ShowMessage("你好，小明（第 2 次问候）"), second)
         assertEquals(1, storage.count("meta"))
+    }
+
+    @Test
+    fun apkPluginUsesProviderEvenWhenBuiltInHandlerExists() = runBlocking {
+        grants.grant(TEST_PLUGIN_ID, setOf(PluginCapabilities.UI_ACTION))
+        var builtInInvoked = false
+        var externalInvoked = false
+        val dispatcher = PluginActionDispatcher(
+            handlers = mapOf(
+                actionId to PluginActionHandler {
+                    builtInInvoked = true
+                    PluginActionResult.Success
+                },
+            ),
+            capabilities = PluginCapabilityBroker(
+                descriptorProvider = { pluginId ->
+                    testDescriptor()
+                        .copy(source = PluginSource.EXTERNAL_APK)
+                        .takeIf { it.pluginId == pluginId }
+                },
+                grants = grants,
+            ),
+            storages = PluginStorageFactory { _, _ -> storage },
+            external = {
+                externalInvoked = true
+                PluginActionResult.ShowMessage("apk")
+            },
+            ioDispatcher = Dispatchers.Unconfined,
+        )
+
+        val result = dispatcher.dispatch(request())
+
+        assertEquals(PluginActionResult.ShowMessage("apk"), result)
+        assertFalse(builtInInvoked)
+        assertTrue(externalInvoked)
     }
 
     private fun dispatcher(

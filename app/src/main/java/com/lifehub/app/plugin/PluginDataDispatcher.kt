@@ -39,19 +39,21 @@ class PluginDataDispatcher(
             }
 
             val descriptor = capabilities.descriptor(request.pluginId)
+            // APK 插件拥有独立进程与数据库，必须走 provider，不能回落到同 ID 的内置 handler。
+            if (descriptor?.source == PluginSource.EXTERNAL_APK) {
+                val result = external?.invoke(request)
+                    ?: PluginDataResult(
+                        emptyTitle = "无法加载",
+                        emptyMessage = "插件 APK 未安装：${request.pluginId}",
+                        isError = true,
+                    )
+                return@withContext validate(result).also {
+                    health?.recordSuccess(request.pluginId)
+                }
+            }
+
             val handler = handlers[sourceKey(request.pluginId, request.sourceId)]
             if (handler == null) {
-                if (descriptor?.source == PluginSource.EXTERNAL_APK) {
-                    val result = external?.invoke(request)
-                        ?: PluginDataResult(
-                            emptyTitle = "无法加载",
-                            emptyMessage = "插件 APK 未安装：${request.pluginId}",
-                            isError = true,
-                        )
-                    return@withContext validate(result).also {
-                        health?.recordSuccess(request.pluginId)
-                    }
-                }
                 return@withContext PluginDataResult(
                     emptyTitle = "无法加载",
                     emptyMessage = "未注册的数据源：${request.sourceId}",

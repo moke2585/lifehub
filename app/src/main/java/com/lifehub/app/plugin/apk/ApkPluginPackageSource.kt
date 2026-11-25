@@ -29,6 +29,8 @@ data class ApkPluginHandle(
     val authority: String,
     val versionCode: Long,
     val signerFingerprint: String,
+    /** 系统首次安装时间，用于识别卸载重装后需要重新迁移数据。 */
+    val firstInstallTime: Long,
 )
 
 /**
@@ -226,6 +228,7 @@ class ApkPluginPackageSource(
                     authority = authority,
                     versionCode = packageVersionCode(providerInfo.packageName),
                     signerFingerprint = signer,
+                    firstInstallTime = packageFirstInstallTime(providerInfo.packageName),
                 )
                 seenPreferences.edit()
                     .putString("$SEEN_NAME_PREFIX${manifest.pluginId}", manifest.name)
@@ -274,6 +277,11 @@ class ApkPluginPackageSource(
         }.getOrNull() ?: return 0L
         return ApkPackageInspector.versionCode(info)
     }
+
+    private fun packageFirstInstallTime(packageName: String): Long =
+        runCatching {
+            packageManager.getPackageInfo(packageName, 0).firstInstallTime
+        }.getOrDefault(0L)
 
     private companion object {
         const val MANIFEST_FILE = "manifest.json"

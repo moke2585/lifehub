@@ -54,10 +54,16 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
                     is ApkInstallEvent.Success -> {
                         awaitingInstall = false
                         pendingPermissionApk = null
-                        registry.reload()
-                        rebuildEntries()
-                        _state.update {
-                            it.copy(operation = MarketOperation.Done("插件已安装"))
+                        viewModelScope.launch {
+                            withContext(Dispatchers.IO) {
+                                app.apkPluginSource.refresh()
+                                app.ledgerApkMigration.migrateIfNeeded()
+                            }
+                            registry.reload()
+                            rebuildEntries()
+                            _state.update {
+                                it.copy(operation = MarketOperation.Done("插件已安装"))
+                            }
                         }
                     }
 
@@ -93,7 +99,10 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
         }
         if (!awaitingInstall) return
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { app.apkPluginSource.refresh() }
+            withContext(Dispatchers.IO) {
+                app.apkPluginSource.refresh()
+                app.ledgerApkMigration.migrateIfNeeded()
+            }
             registry.reload()
             rebuildEntries()
             awaitingInstall = false
@@ -113,7 +122,9 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
     fun install(entry: MarketEntry) {
         if (!entry.canInstall) return
         if (_state.value.operation is MarketOperation.Working) return
-        if (registry.plugin(entry.plugin.pluginId)?.source == PluginSource.BUILT_IN) {
+        if (registry.plugin(entry.plugin.pluginId)?.source == PluginSource.BUILT_IN &&
+            !entry.plugin.isApk
+        ) {
             _state.update {
                 it.copy(operation = MarketOperation.Failed("与内置插件 ID 冲突，不能从市场安装"))
             }
@@ -265,7 +276,7 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
             .orEmpty()
         return index.plugins.map { plugin ->
             val descriptor = descriptors.firstOrNull { it.pluginId == plugin.pluginId }
-            if (descriptor?.source == PluginSource.BUILT_IN) {
+            if (descriptor?.source == PluginSource.BUILT_IN && !plugin.isApk) {
                 MarketEntry(
                     plugin = plugin,
                     status = MarketStatus.CONFLICT,
@@ -294,6 +305,11 @@ class MarketplaceViewModel(application: Application) : AndroidViewModel(applicat
                 plugin = plugin,
                 status = MarketStatus.NOT_INSTALLED,
                 installedVersion = null,
+                note = if (descriptor?.source == PluginSource.BUILT_IN) {
+                    "安装后替代内置版本"
+                } else {
+                    null
+                },
             )
         val installedVersion = descriptor?.manifest?.version
         val indexVersionCode = plugin.versionCode
