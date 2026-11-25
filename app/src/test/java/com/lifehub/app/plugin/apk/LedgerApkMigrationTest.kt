@@ -33,7 +33,7 @@ class LedgerApkMigrationTest {
 
         assertFalse(outcome.changed)
         assertNull(imported)
-        assertTrue(migration.readyPluginIds().isEmpty())
+        assertNull(state.read(pluginId))
     }
 
     @Test
@@ -64,7 +64,6 @@ class LedgerApkMigrationTest {
         )
         assertEquals(pluginId, snapshot.pluginId)
         assertEquals(2, snapshot.recordCount)
-        assertEquals(setOf(pluginId), migration.readyPluginIds())
         assertEquals(100L, state.read(pluginId))
     }
 
@@ -88,7 +87,7 @@ class LedgerApkMigrationTest {
         assertTrue(outcome.changed)
         assertEquals(0, outcome.recordCount)
         assertNull(imported)
-        assertEquals(setOf(pluginId), migration.readyPluginIds())
+        assertEquals(200L, state.read(pluginId))
     }
 
     @Test
@@ -130,7 +129,7 @@ class LedgerApkMigrationTest {
 
         assertTrue(outcome.changed)
         assertNull(imported)
-        assertEquals(setOf(pluginId), migration.readyPluginIds())
+        assertEquals(300L, state.read(pluginId))
     }
 
     @Test
@@ -152,7 +151,6 @@ class LedgerApkMigrationTest {
 
         assertTrue(result.isFailure)
         assertNull(state.read(pluginId))
-        assertTrue(migration.readyPluginIds().isEmpty())
     }
 
     @Test

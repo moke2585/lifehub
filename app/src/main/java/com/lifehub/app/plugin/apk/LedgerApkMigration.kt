@@ -47,14 +47,6 @@ class LedgerApkMigration(
     private val log: (String) -> Unit = {},
 ) {
 
-    /** 已就绪的插件 ID；为空表示继续使用内置版本。 */
-    fun readyPluginIds(): Set<String> {
-        // 从未迁移过时直接返回，避免每次插件列表加载都触发 APK 发现。
-        val migrated = state.read(PLUGIN_ID) ?: return emptySet()
-        val installed = runCatching { installedFirstInstallTime() }.getOrNull() ?: return emptySet()
-        return if (migrated == installed) setOf(PLUGIN_ID) else emptySet()
-    }
-
     /**
      * 迁移内置记账数据。未安装 APK 或已经迁移时返回 [Outcome.changed] = false。
      */

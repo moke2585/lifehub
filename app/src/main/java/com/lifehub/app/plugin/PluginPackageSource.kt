@@ -39,16 +39,10 @@ interface PluginPackageSource {
 
 class AssetPluginPackageSource(
     private val assets: AssetManager,
-    /** 已成功迁移到 APK 插件的 ID：这些内置插件让位，避免同 ID 冲突。 */
-    private val excludedPluginIds: () -> Set<String> = { emptySet() },
 ) : PluginPackageSource {
 
-    override fun pluginIds(): List<String> {
-        val excluded = runCatching { excludedPluginIds() }.getOrDefault(emptySet())
-        return assets.list(PLUGIN_ROOT).orEmpty()
-            .filterNot { it in excluded }
-            .toList()
-    }
+    override fun pluginIds(): List<String> =
+        assets.list(PLUGIN_ROOT).orEmpty().toList()
 
     override fun open(pluginId: String, relativePath: String): InputStream? {
         if (!PluginPathRules.isSafeRelativePath(pluginId) ||

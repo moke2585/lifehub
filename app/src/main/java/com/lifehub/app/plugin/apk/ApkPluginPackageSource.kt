@@ -41,6 +41,8 @@ data class ApkPluginHandle(
  */
 class ApkPluginPackageSource(
     private val context: Context,
+    /** 宿主已知但未内置的 APK 插件；未安装时也显示入口，引导去市场。 */
+    private val knownPlugins: Map<String, String> = emptyMap(),
     private val log: (String) -> Unit = {},
 ) : PluginPackageSource {
 
@@ -65,26 +67,34 @@ class ApkPluginPackageSource(
 
     override fun placeholders(): List<PluginDescriptor> {
         val installed = discover().keys
-        return seenPreferences.all.mapNotNull { (key, value) ->
+        val placeholders = seenPreferences.all.mapNotNull { (key, value) ->
             if (!key.startsWith(SEEN_NAME_PREFIX)) return@mapNotNull null
             val pluginId = key.removePrefix(SEEN_NAME_PREFIX)
             if (pluginId in installed) return@mapNotNull null
-            val displayName = value as? String ?: pluginId
-            PluginDescriptor(
-                pluginId = pluginId,
-                displayName = displayName,
-                manifest = null,
-                status = PluginStatus.NOT_INSTALLED,
-                source = PluginSource.EXTERNAL_APK,
-                issues = listOf(
-                    PluginIssue(
-                        code = PluginIssueCode.MANIFEST_UNREADABLE,
-                        message = "插件 APK 未安装：$displayName",
-                    ),
-                ),
-            )
+            placeholder(pluginId, value as? String ?: pluginId)
+        }.toMutableList()
+        val knownIds = placeholders.mapTo(mutableSetOf()) { it.pluginId }
+        knownPlugins.forEach { (pluginId, displayName) ->
+            if (pluginId in installed || pluginId in knownIds) return@forEach
+            placeholders += placeholder(pluginId, displayName)
         }
+        return placeholders
     }
+
+    private fun placeholder(pluginId: String, displayName: String): PluginDescriptor =
+        PluginDescriptor(
+            pluginId = pluginId,
+            displayName = displayName,
+            manifest = null,
+            status = PluginStatus.NOT_INSTALLED,
+            source = PluginSource.EXTERNAL_APK,
+            issues = listOf(
+                PluginIssue(
+                    code = PluginIssueCode.MANIFEST_UNREADABLE,
+                    message = "插件 APK 未安装，请前往插件市场安装：$displayName",
+                ),
+            ),
+        )
 
     override fun open(pluginId: String, relativePath: String): InputStream? {
         if (!PluginPathRules.isSafeRelativePath(relativePath)) return null

@@ -34,7 +34,6 @@ import com.lifehub.app.plugin.apk.SharedPreferencesMigrationStateStore
 import com.lifehub.app.plugin.zip.PluginZipImporter
 import com.lifehub.app.plugin.zip.SharedPreferencesPluginSignerStore
 import com.lifehub.app.plugins.FirstPartyPluginHandlers
-import com.lifehub.app.plugins.LedgerPlugin
 import com.lifehub.app.plugins.TravelPlugin
 import com.lifehub.pluginapi.HostInfo
 import com.lifehub.pluginapi.PluginApiVersion
@@ -56,10 +55,7 @@ class LifeHubApplication : Application() {
         )
 
     private val builtInPluginSource: AssetPluginPackageSource by lazy {
-        AssetPluginPackageSource(
-            assets = assets,
-            excludedPluginIds = { ledgerApkMigration.readyPluginIds() },
-        )
+        AssetPluginPackageSource(assets)
     }
 
     private val externalPluginSource: ZipPluginPackageSource by lazy {
@@ -69,6 +65,8 @@ class LifeHubApplication : Application() {
     val apkPluginSource: ApkPluginPackageSource by lazy {
         ApkPluginPackageSource(
             context = this,
+            // 记账已不再内置：未安装 APK 时也保留入口，引导用户去插件市场。
+            knownPlugins = mapOf(LedgerApkMigration.PLUGIN_ID to "记账"),
             log = { message -> AppLog.event(AppLog.Category.PLUGIN, message) },
         )
     }
@@ -80,11 +78,11 @@ class LifeHubApplication : Application() {
             ),
             storageFactory = pluginStorageFactory,
             installedFirstInstallTime = {
-                apkPluginSource.installedHandle(LedgerPlugin.PLUGIN_ID)?.firstInstallTime
+                apkPluginSource.installedHandle(LedgerApkMigration.PLUGIN_ID)?.firstInstallTime
             },
-            exportPayload = { apkPluginSource.exportBackup(LedgerPlugin.PLUGIN_ID) },
+            exportPayload = { apkPluginSource.exportBackup(LedgerApkMigration.PLUGIN_ID) },
             importPayload = { payload ->
-                apkPluginSource.importBackup(LedgerPlugin.PLUGIN_ID, payload)
+                apkPluginSource.importBackup(LedgerApkMigration.PLUGIN_ID, payload)
             },
             log = { message -> AppLog.event(AppLog.Category.PLUGIN, message) },
         )
@@ -141,9 +139,9 @@ class LifeHubApplication : Application() {
             importDir = File(filesDir, IMPORT_DIR),
             hostInfo = hostInfo,
             signerStore = pluginSignerStore,
-            // 内置插件与已安装 APK 插件都保留自己的 ID，ZIP 不能覆盖。
+            // 已安装 APK 插件保留自己的 ID，ZIP 不能覆盖。
             builtInPluginIds = {
-                (builtInPluginSource.pluginIds() + apkPluginSource.pluginIds()).toSet()
+                apkPluginSource.pluginIds().toSet()
             },
         )
     }

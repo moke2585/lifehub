@@ -13,7 +13,7 @@
 
 | 插件 | 版本 | 说明 |
 |---|---|---|
-| 记账 `com.lifehub.plugin.ledger` | 1.7.0 | 收支记录、日/月/年统计、图表下钻、月度与分类预算、结转、借还台账、自定义分类、首页小组件；支持独立 APK 插件替代内置 |
+| 记账 `com.lifehub.plugin.ledger` | 1.7.0 | 收支记录、日/月/年统计、图表下钻、月度与分类预算、结转、借还台账、自定义分类、首页小组件；以独立 APK 插件分发，安装后自动迁移内置数据 |
 | 任务清单 `com.lifehub.plugin.memo` | 1.1.0 | 截止日期、1–5 级优先级、紧急指数、Emoji 图标、日常任务倍率、回收站、搜索与置顶；以独立 APK 插件分发 |
 | 旅迹 `com.lifehub.plugin.travel` | 3.0.0 | 中国省/市/区县逐级点亮、五星地区评分、旅行评论、评分榜、地区搜索、高清地图导出 |
 | 插件市场 | 宿主 1.1.0 | 从签名索引发现插件，应用内下载并安装 `.lhplugin` / APK；支持缓存、离线标识、签名者与能力展示 |
@@ -103,8 +103,8 @@ CI：宿主 [release.yml](.github/workflows/release.yml) 负责宿主 APK；memo
 | `:app` | 宿主：Compose 主题、插件注册表、插件列表/详情/页面路由、备份、错误页 |
 | `:plugin-api` | 插件 SDK 契约：manifest、描述符、状态、action、页面数据、APK 协议、备份快照 |
 | `:plugin-runtime` | `PluginModule` 契约、宿主侧存储工具、`.lhplugin` 读取与验签 |
-| `:plugins:ledger` | 记账插件：Kotlin handler + manifest/pages/assets |
-| `:plugins:ledger-apk` | 记账 headless APK：provider + 自有 SQLite（阶段 1 与内置并存） |
+| `:plugins:ledger` | 记账插件：manifest/pages/handler（供 APK 模块构建，宿主不再内置） |
+| `:plugins:ledger-apk` | 记账 headless APK：provider + 自有 SQLite |
 | `:plugins:memo` | 任务清单 handler 与声明式页面（APK 插件的共享库） |
 | `:plugins:memo-apk` | 任务清单 headless APK：provider + 自有 SQLite |
 | `:plugins:travel` | 旅迹插件：Kotlin handler、地图资产与高清导出 |
@@ -166,8 +166,8 @@ CI：宿主 [release.yml](.github/workflows/release.yml) 负责宿主 APK；memo
 - 仅支持 API 26 及以上；Release 仅打包 `arm64-v8a`。
 - 1.0.0 无网络权限；1.1.0 插件市场仅访问索引与 GitHub Release 下载地址，断网时回退缓存/内置快照。
 - 宿主 Release 仅打包 `arm64-v8a`。
-- APK 插件的 Binder 单次载荷上限为 512 KiB；旅迹地图资产较大，暂保持内置声明式形态。记账内置数据迁移超过上限时自动回退内置实现，旧数据库保留。
-- 安装记账 APK 后，宿主首次启动会把内置四个集合迁移到插件 SQLite；迁移成功前继续使用内置数据，避免空账本。卸载 APK 会删除插件数据库并回退到迁移前的内置数据。
+- APK 插件的 Binder 单次载荷上限为 512 KiB；旅迹地图资产较大，暂保持内置声明式形态。记账旧数据迁移超过上限时保留旧库，不切换入口。
+- 阶段 2 起记账不再内置：未安装 APK 时插件页显示“记账 未安装”并引导到市场；安装后首次启动迁移宿主旧库四个集合。卸载 APK 会删除插件数据库，旧库保留，重新安装后再次迁移。
 - 卸载 APK 插件会删除其数据库，需要时通过备份恢复；APK 插件只能通过系统安装器或 adb 安装。
 - APK provider 当前按调用方包名校验，尚未启用签名级权限与证书固定。
 - Debug 包名为 `com.lifehub.app.debug`，Release 为 `com.lifehub.app`，可并存安装。

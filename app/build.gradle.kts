@@ -139,7 +139,6 @@ tasks.register("checkReleasePrerequisites") {
 dependencies {
     implementation(project(":plugin-api"))
     implementation(project(":plugin-runtime"))
-    implementation(project(":plugins:ledger"))
     implementation(project(":plugins:travel"))
 
     implementation(libs.androidx.core.ktx)
